@@ -1,5 +1,7 @@
 local Exports = {}
 
+local yield = coroutine.yield
+
 -------------------
 --SAX Stream events
 -------------------
@@ -23,13 +25,17 @@ Exports.StartEvent = StartEvent
 Exports.TextEvent = TextEvent
 Exports.EndEvent = EndEvent
 
+Exports.EmitStartEvent = function(...) return yield(StartEvent(...)) end
+Exports.EmitTextEvent  = function(...) return yield(TextEvent(...)) end
+Exports.EmitEndEvent   = function(...) return yield(EndEvent(...)) end
+
 ----------------
 -- SAX Iterators
 ----------------
-
 -- A SAX iterator is a function that returns new SAX events
 -- each time its called and `nil` to signal the end of the stream.
 -- Additionally, every open tag should have a matching close tag.
+
 local function assert_stream(stream)
 	
 	local tag_stack = {}
@@ -102,7 +108,7 @@ end
 --  End: (parentstate, childstate, evt) -> state?
 -- In a purely functional setting, each handler should return the next value
  -- for the folding state. As a convenience for programs using mutation,
---  returning `nil` from a handler counts as returning the old state.
+--  returning nil from a handler counts as returning the old state.
 local function fold_stream(stream, initial_state, handlers)
 	-- TODO: split off into scanl version if we want to support
 	-- filter and map w/o needing coroutines.
@@ -111,7 +117,7 @@ local function fold_stream(stream, initial_state, handlers)
   local onText = assert(handlers.Text)
   local onEnd = assert(handlers.End)
   
-  local depth = 0 -- can't use #parent_states because states can be nil
+  local depth = 0 -- can't use the `#` operator because states can be nil
 	local ancestor_states = {}
   local state = initial_state
 	
@@ -177,5 +183,7 @@ end
 
 Exports.to_dom = sax_to_dom
 Exports.print_dom = print_dom
+
+--------
 
 return Exports

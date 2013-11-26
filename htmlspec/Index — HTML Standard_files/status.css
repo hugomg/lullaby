@@ -1,0 +1,77 @@
+.status { font: 1em sans-serif; letter-spacing: -0.05em; width: 7.2em; padding: 0.3em; position: absolute; z-index: 8; left: 0.3em; background: #EEE; color: black; display: none; }
+.status > * { font-size: 0.6em; }
+.status.current { position: fixed; z-index: 7; top: 20px; transition: 1s; } /* 20px is in the js file too */
+.status[hidden] { display: block; opacity: 0.0; transition: 0.25s; }
+.status strong { display: block; margin: -0.5em -0.5em 0.2em; padding: 0.2em 0.3em 0.25em; background: black; color: white; font-weight: normal; }
+.status.UNKNOWN strong { background: gray; color: white; }
+.status.TBW strong { background: red; color: white; }
+.status.WIP strong { background: red; color: white; }
+.status.FD strong { background: orange; color: black; }
+.status.WD strong { background: orange; color: black; }
+.status.CWD strong { background: red; color: yellow; }
+.status.ATRISK strong { background: red; color: yellow; }
+.status.LC strong { background: yellow; color: black; }
+.status.CR strong { background: lime; color: black; }
+.status.REC strong { background: green; color: white; }
+.status.SPLITFD strong { background: navy; color: white; }
+.status.SPLIT/*CR*/ strong { background: navy; color: white; }
+.status.SPLITREC strong { background: navy; color: white; }
+.status:after { position: absolute; top: 0; left: 100%; margin-left: -1px; content: '\25B6'; font-size: 0.6em; }
+.status.UNKNOWN:after { color: gray }
+.status.TBW:after { color: red }
+.status.WIP:after { color: red }
+.status.FD:after { color: orange }
+.status.WD:after { color: orange }
+.status.CWD:after { color: red }
+.status.ATRISK:after { color: red }
+.status.LC:after { color: yellow }
+.status.CR:after { color: lime }
+.status.REC:after { color: green }
+.status.SPLITFD:after { color: navy }
+.status.SPLIT/*CR*/:after { color: navy }
+.status.SPLITREC:after { color: navy }
+.status { box-shadow: 0 0 3px #999; }
+.status:after { text-shadow: 1px 0 2px #999; }
+.status p { margin: 0; clear: both; }
+.status p + p { overflow: hidden; }
+.status div.implementations { height: 34px; font: 10px/1.2em sans-serif; max-height: none; overflow: hidden; }
+.status div.implementations:before { display: block; content: "Implementation status:"; }
+.status div.implementations p { font-size: 16px; float: left; margin: 0; border: 2px solid transparent; padding: 1px; text-indent: -10000px; /* well that's just silly */ width: 1em; height: 1em; background: no-repeat center center; /*background-size: 1em 1em;*/ clear: none; }
+.status div.implementations p.IE { background-image: url(http://www.w3.org/TR/2006/WD-i18n-html-tech-lang-20060721/images/iewin.gif); background-position: center left; }
+.status div.implementations p.Firefox { background-image: url(http://www.mozilla.org/favicon.ico); }
+.status div.implementations p.Safari { background-image: url(http://www.webkit.org/favicon.ico); }
+.status div.implementations p.Opera { background-image: url(http://www.opera.com/favicon.ico); }
+.status div.implementations p.Shims { background-image: url(http://upload.wikimedia.org/wikipedia/commons/b/b7/Plugin.png); }
+.status div.implementations p.NA,
+.status div.implementations p.UNKNOWN { opacity: 0.05; }
+.status div.implementations p.PASS { }
+.status div.implementations p.PARTIAL { opacity: 0.4; }
+.status div.implementations p.NONE { background: #FEE; }
+.status div.implementations p.BUG { border-bottom-color: red; }
+.status div.implementations p.CRASH { border-style: dotted; border-color: black; background-color: yellow; }
+.status .autohide { max-height: 0; opacity: 0; overflow: hidden; transition: 0.5s; }
+.status:hover .autohide { max-height: 10em; opacity: 1.0; }
+.status:not(:hover) div.implementations.autohide { height: 0; }
+.status .idref > a { display: block; margin: 0.1em 0 0.2em; }
+.status:hover { z-index: 10; }
+
+.progress { text-decoration: blink; }
+
+.panel { position: fixed; z-index: 9; top: 10%; left: 0; margin: auto; right: 0; width: 35em; border: double thick; background: #EEEEEE; color: black; padding: 1em; font: 1em sans-serif; max-height: 70%; overflow: auto; }
+.panel h2 { margin: 0; text-align: center; }
+.panel ul { min-height: 6em; }
+.panel p { text-align: right; margin: 0; }
+.panel form { background: transparent; color: black; margin: 0.5em -0.5em 1em; padding: 0.5em; }
+.panel form.changed { background: yellow; color: black; }
+.panel form p { text-align: left; margin: 1em 0 0; }
+.panel form p:first-child { margin-top: 0; }
+.panel form p:last-child { margin-bottom: 0; }
+.panel form p textarea { width: 100% /* need the keyword that makes it fit to the parent here XXX */; min-height: 4em; display: block; }
+.panel form dl { line-height: 1.5em; }
+.panel form dt { display: inline-block; width: 20em; white-space: nowrap; text-align: right; font-weight: normal; margin: 0; padding: 0; }
+.panel form dd { display: inline; margin: 0 0 0 1em; padding: 0; }
+.panel form dd:after { display: block; }
+
+body.statusEnabled .status { display: block; }
+
+ul.checkboxes { list-style-type: none; }
