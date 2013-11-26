@@ -1,7 +1,7 @@
 local html_data = require 'html_data'
 local sax = require 'sax'
 local U = require 'util'
-local markup = require 'markup'
+local escape = require 'escape'
 
 ---
 -- Process html data from the spec
@@ -37,20 +37,7 @@ end
 -- Define HTML constructors.
 ---
 
--- Url parameters need to be encoded as an associative map instead of a string.
-local UrlMt = {}
-local function Url(base, params, fragment)
-	return setmetatable({
-		base=base,
-		params=params or {},
-		fragment=fragment or {},
-	}, UrlMt) 
-end
-UrlMt.__tostring = function(self)
-	error("TODO")
-end
-
--- Unsafe strings in the API are marked with this datatype
+-- Datatype for unsafe attributes (like event handlers)
 local RawMt = {}
 local function Raw(str)
 	assert(type(str) == 'string')
@@ -60,8 +47,106 @@ RawMt.__tostring = function(self)
 	return self.value
 end
 
-local function isUrlType(x) return getmetatable(x) == UrlMt end
 local function isRawType(x) return getmetatable(x) == RawMt end
+
+--Datatype for URL attributes
+local UrlMt = {}
+
+local url_schemes = U.Set{'http', 'https'}
+
+local function _Url(scheme, host, path, kw, isabsolute)
+	
+	path = path or {}
+	kw = kw or {}
+	
+	if scheme then
+		if not url_schemes[scheme] then
+			error(string.format("Unrecognized scheme %q", tostring(scheme)))
+		end
+		assert(host)
+	end
+	
+	if host then
+		if string.match(host, '[^%w%-%.]') then
+			error(string.format("Bad characters in host %q", host))
+		end
+		assert(isabsolute)
+	end
+	
+	local params = {}
+	local hash = nil
+	for k, v in pairs(kw) do
+		if     k == 'params' then params = v
+		elseif k == 'hash' then hash = v
+		else error(string.format("Unrecognized keyword %q", tostring(k)))
+		end
+	end
+	
+	if not isabsolute then
+		assert(#path > 0 or #params > 0 or hash)
+	end
+	
+	return setmetatable({
+		scheme=scheme,
+		host=host,
+		path=path,
+		params=params,
+		hash=hash,
+		isabsolute=isabsolute,
+	}, UrlMt)
+end
+
+UrlMt.__tostring = function(self)
+	local res = {}
+	
+	local function w(s)
+		assert(type(s) == 'string')
+		table.insert(res, s)
+	end
+	
+	if self.scheme then
+		w(self.scheme)
+	end
+	
+	if self.host then	
+		w('//')
+		w(self.host)
+	end
+	
+	if self.isabsolute then
+		w('/')
+	end
+	
+	w(table.concat(U.map(self.path, escape.url_unit), '/'))
+	
+	if #self.params > 0 then
+		w('?')
+		for i, key, value in U.xpairs(self.params) do
+			if i > 1 then w('&') end
+			w(escape.url_unit(key))
+			w('=')
+			w(escape.url_unit(value))
+		end
+	end
+	
+	if self.hash then
+		w('#')
+		w(escape.url_unit(self.hash))
+	end
+	
+	return table.concat(res)
+end
+
+local function isUrlType(x) return getmetatable(x) == UrlMt end
+
+local function AbsUrl(scheme, host, path, args)
+	return _Url(scheme, host, path, args, true)
+end
+
+local function RelUrl(path, args)
+	return _Url(nil, nil, path, args, false)
+end
+
 
 local function case_insensitive_pattern(str)
 	return (string.gsub(str, '%w', function(s)
@@ -137,7 +222,7 @@ local function Html(title, body)
 end
 
 local function printTo(file, stream)
-	file:write("<!doctype html>")
+	file:write("<!doctype html>\n")
 	sax.foreach(stream, {
 		Start = function(evt)
 			file:write('<'..evt.tagname)
@@ -148,13 +233,16 @@ local function printTo(file, stream)
 						file:write(string.format(' %s', attrname))
 					end
 				else
-					file:write(string.format(' %s="%s"', attrname, markup.escape_double_quotes(tostring(attrvalue))))
+					file:write(string.format(' %s="%s"', attrname, escape.html_double_quoted_attribute(tostring(attrvalue))))
 				end
 			end
 			file:write('>')
+			if evt.tagname == 'pre' or evt.tagname == 'textarea' then
+				file:write("\n")
+			end
 		end,
 		Text = function(evt)
-			file:write((markup.escape_text(evt.text)))
+			file:write(escape.html_text(evt.text))
 		end,
 		End = function(evt)
 			if ElemMap[evt.tagname].kind ~= 'Void' then
@@ -169,7 +257,16 @@ local Exports = {}
 printTo(io.stdout, Html("Hello", function()
 	YieldElement('span', {}, 'as<d')
 	YieldElement('div', {{'class',"FOO"}}, function()
-		--YieldElement('a', {{'href',Url("ASDF")}}, "hello")
+		YieldElement('PRE', {}, 'XXX')
+		YieldElement('a', {
+			{'href',AbsUrl('http', 'www.example.com', {'a','b'}, {params={{'t', '10m'}, {'x', 'y'}}, hash="x1"}) }
+		}, "hello")
+		YieldElement('a', {
+			{'href',AbsUrl('http', 'www.google.com') }
+		}, "google")
+		YieldElement('a', {
+			{'href',RelUrl({'foo'}, {params={{'t', '10m'}}, hash="x1"}) }
+		}, "world")
 	end)
 end))
 print()
