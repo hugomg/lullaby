@@ -270,7 +270,7 @@ end
 H.Document = Document
 
 local function _printTo(indent, file, stream)
-	file:write("<!doctype html>\n")
+	file:write("<!DOCTYPE html>\n")
 	sax.fold_stream(stream, 0, {
 			
 		Start = function(depth, evt)
