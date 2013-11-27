@@ -210,18 +210,36 @@ local function YieldElement(elemname, attrs, body)
 	sax.EmitEndEvent(elemname)
 end
 
+---
+-- Public Html constructors
+---
 
-local function Html(title, body)
+local H = {} --Exports
+
+H.AbsUrl = AbsUrl
+H.RelUrl = RelUrl
+H.Raw = Raw
+
+for _, elem in pairs(ElemMap) do
+	H[elem.name:upper()] = function(attrs, body)
+		return YieldElement(elem.name, attrs, body)
+	end
+end
+
+-- string, function -> stream
+local function Document(title, body)
 	assert(type(title) == 'string')
 	return sax.from_coro(function()
-		YieldElement('html', {}, function()
-			YieldElement('head', {}, function()
-				YieldElement('title', {}, title)
+		H.HTML({}, function()
+			H.HEAD({}, function()
+				H.TITLE({}, title)
 			end)
-			YieldElement('body', {}, body)
+			H.BODY({}, body)
 		end)
 	end)
 end
+
+H.Document = Document
 
 local function _printTo(indent, file, stream)
 	file:write("<!doctype html>\n")
@@ -273,28 +291,11 @@ local function _printTo(indent, file, stream)
 	})
 end
 
-local Exports = {}
+H.printTo       = function(file, doc) return _printTo(false, file, doc) end
+H.prettyPrintTo = function(file, doc) return _printTo(true,  file, doc) end
 
-_printTo(true, io.stdout,
-	Html("Hello", function()
-		YieldElement('span', {}, 'as<d')
-		YieldElement('img', {{'src', AbsUrl('http', 'www.pudim.com.br')}, {'alt', "Pudim" }})
-		YieldElement('div', {{'class',"FOO"}}, function()
-		YieldElement('PRE', {}, 'XXX')
-			YieldElement('a', {
-				{'href',AbsUrl('http', 'www.example.com', {'a','b'}, {params={{'t', '10m'}, {'x', 'y'}}, hash="x1"}) }
-			}, "hello")
-			YieldElement('a', {
-				{'href',AbsUrl('http', 'www.google.com') }
-			}, "google")
-			YieldElement('a', {
-				{'href',RelUrl({'foo'}, {params={{'t', '10m'}}, hash="x1"}) }
-			}, "world")
-		end)
-	end)
-)
-print()
 
+return H
 
 --------
 -- Notes
