@@ -40,9 +40,12 @@ Exports.html_unquoted_attribute      = escaper('[^%w]'  , xml_entity_escape)
 -- URL Encoding
 ---
 
-Exports.url_unit = escaper('[^%w-_]', function(c) 
+local function url_encode(c)
 	assert(#c == 1)
 	return string.format("%%%02X", string.byte(c))
-end)
+end
+
+Exports.url_param = escaper('[^%w]', url_encode)
+Exports.url_path  = escaper('[^%w-_.]', url_encode)
 
 return Exports

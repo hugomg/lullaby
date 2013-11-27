@@ -3,6 +3,25 @@ local sax = require 'sax'
 local U = require 'util'
 local escape = require 'escape'
 
+
+---
+-- Helpers
+---
+
+-- We use {k=v} attributes in the user interface for convenience but the
+-- lower-level libraries use {{k,v}} because ipairs more predictable than pairs
+local function tableToPairs(t)
+	local kvs = {}
+	for k,v in pairs(t) do
+		if type(k) == 'string' then
+			table.insert(kvs, {k,v})
+		end
+	end
+	-- Make this function deterministic:
+	table.sort(kvs, function(a, b) return a[1] < b[1] end)
+	return kvs
+end
+
 ---
 -- Process html data from the spec
 ---
@@ -76,9 +95,13 @@ local function _Url(scheme, host, path, kw, isabsolute)
 	local params = {}
 	local hash = nil
 	for k, v in pairs(kw) do
-		if     k == 'params' then params = v
+		if     k == 'params' then params = tableToPairs(v)
 		elseif k == 'hash' then hash = v
-		else error(string.format("Unrecognized keyword %q", tostring(k)))
+		else
+			if type(k) ~= 'number' then
+				--Typos or wrong param names
+				error(string.format("Unrecognized keyword %q", tostring(k)))
+			end
 		end
 	end
 	
@@ -117,21 +140,21 @@ UrlMt.__tostring = function(self)
 		w('/')
 	end
 	
-	w(table.concat(U.map(self.path, escape.url_unit), '/'))
+	w(table.concat(U.map(self.path, escape.url_path), '/'))
 	
 	if #self.params > 0 then
 		w('?')
 		for i, key, value in U.xpairs(self.params) do
 			if i > 1 then w('&') end
-			w(escape.url_unit(key))
+			w(escape.url_param(key))
 			w('=')
-			w(escape.url_unit(value))
+			w(escape.url_param(value))
 		end
 	end
 	
 	if self.hash then
 		w('#')
-		w(escape.url_unit(self.hash))
+		w(escape.url_param(self.hash))
 	end
 	
 	return table.concat(res)
@@ -139,12 +162,14 @@ end
 
 local function isUrlType(x) return getmetatable(x) == UrlMt end
 
-local function AbsUrl(scheme, host, path, args)
-	return _Url(scheme, host, path, args, true)
+local function AbsUrl(args)
+	assert(type(args) == 'table')
+	return _Url(args[1], args[2], args[3], args, true)
 end
 
-local function RelUrl(path, args)
-	return _Url(nil, nil, path, args, false)
+local function RelUrl(args)
+	assert(type(args) == 'table')
+	return _Url(nil, nil, args[1], args, false)
 end
 
 
@@ -221,7 +246,9 @@ H.RelUrl = RelUrl
 H.Raw = Raw
 
 for _, elem in pairs(ElemMap) do
-	H[elem.name:upper()] = function(attrs, body)
+	H[elem.name:upper()] = function(args)
+		local body = args[1]
+		local attrs = tableToPairs(args)
 		return YieldElement(elem.name, attrs, body)
 	end
 end
@@ -230,12 +257,12 @@ end
 local function Document(title, body)
 	assert(type(title) == 'string')
 	return sax.from_coro(function()
-		H.HTML({}, function()
-			H.HEAD({}, function()
-				H.TITLE({}, title)
-			end)
-			H.BODY({}, body)
-		end)
+		H.HTML{function()
+			H.HEAD{function()
+				H.TITLE{title}
+			end}
+			H.BODY{body}
+		end}
 	end)
 end
 

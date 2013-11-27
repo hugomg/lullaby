@@ -39,7 +39,6 @@ M.xmap = function(xss, f)
 	return ys
 end
 
-
 -- inEnv: Run the block with the given table as the environment.
 -- The second argument MUST be an anonymous callback with `_ENV` as its first argument.
 -- Ignores the environment of the callee, uses Util's global environment instead.
