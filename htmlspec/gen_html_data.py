@@ -1,6 +1,8 @@
 #! /usr/bin/python
 # -*- coding:utf-8 -*-
 
+# Usaeg: python gen_html_data.py < 'Index — HTML Standard.html'
+
 from bs4 import BeautifulSoup
 from sys import stdin, stdout, stderr
 
@@ -114,6 +116,8 @@ def print_table(columns, rows):
 
   stdout.write("}\n")
 
+stdout.write("-- THIS FILE WAS AUTOMATICALLY GENERATED. DO NOT EDIT BY HAND --\n")
+stdout.write("\n")
 stdout.write("local M = {}\n")
 stdout.write("M.Elems = "); print_table(['Name', 'Type'], elements)
 stdout.write("M.Attrs = "); print_table(['Name', 'Type', 'Allowed Elements'], attributes)
