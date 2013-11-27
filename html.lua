@@ -214,17 +214,20 @@ end
 local function Html(title, body)
 	assert(type(title) == 'string')
 	return sax.from_coro(function()
-		YieldElement('head', {}, function()
-			YieldElement('title', {}, title)
+		YieldElement('html', {}, function()
+			YieldElement('head', {}, function()
+				YieldElement('title', {}, title)
+			end)
 			YieldElement('body', {}, body)
 		end)
 	end)
 end
 
-local function printTo(file, stream)
+local function _printTo(indent, file, stream)
 	file:write("<!doctype html>\n")
-	sax.foreach(stream, {
-		Start = function(evt)
+	sax.fold_stream(stream, 0, {
+			
+		Start = function(depth, evt)
 			file:write('<'..evt.tagname)
 			for _, attrname, attrvalue in U.xpairs(evt.attrs) do
 				local attr = AttrMap[attrname]
@@ -236,17 +239,35 @@ local function printTo(file, stream)
 					file:write(string.format(' %s="%s"', attrname, escape.html_double_quoted_attribute(tostring(attrvalue))))
 				end
 			end
+			
+			local eats_newline = evt.tagname == 'pre' or evt.tagname == 'textarea'
+			
+			if indent and not eats_newline then
+				if ElemMap[evt.tagname].kind ~= 'Void' then
+					file:write('\n', string.rep('  ', depth+1))
+				else
+					file:write('\n', string.rep('  ', depth))
+				end
+			end
+			
 			file:write('>')
-			if evt.tagname == 'pre' or evt.tagname == 'textarea' then
+			if eats_newline then
 				file:write("\n")
 			end
+			return depth + 1
 		end,
-		Text = function(evt)
+		
+		Text = function(_, evt)
 			file:write(escape.html_text(evt.text))
 		end,
-		End = function(evt)
+		
+		End = function(depth, _, evt)
 			if ElemMap[evt.tagname].kind ~= 'Void' then
-				file:write('</'..evt.tagname..'>')
+				file:write('</'..evt.tagname)
+				if indent then
+					file:write('\n', string.rep('  ', depth))
+				end
+				file:write('>')
 			end
 		end,
 	})
@@ -254,21 +275,24 @@ end
 
 local Exports = {}
 
-printTo(io.stdout, Html("Hello", function()
-	YieldElement('span', {}, 'as<d')
-	YieldElement('div', {{'class',"FOO"}}, function()
+_printTo(true, io.stdout,
+	Html("Hello", function()
+		YieldElement('span', {}, 'as<d')
+		YieldElement('img', {{'src', AbsUrl('http', 'www.pudim.com.br')}, {'alt', "Pudim" }})
+		YieldElement('div', {{'class',"FOO"}}, function()
 		YieldElement('PRE', {}, 'XXX')
-		YieldElement('a', {
-			{'href',AbsUrl('http', 'www.example.com', {'a','b'}, {params={{'t', '10m'}, {'x', 'y'}}, hash="x1"}) }
-		}, "hello")
-		YieldElement('a', {
-			{'href',AbsUrl('http', 'www.google.com') }
-		}, "google")
-		YieldElement('a', {
-			{'href',RelUrl({'foo'}, {params={{'t', '10m'}}, hash="x1"}) }
-		}, "world")
+			YieldElement('a', {
+				{'href',AbsUrl('http', 'www.example.com', {'a','b'}, {params={{'t', '10m'}, {'x', 'y'}}, hash="x1"}) }
+			}, "hello")
+			YieldElement('a', {
+				{'href',AbsUrl('http', 'www.google.com') }
+			}, "google")
+			YieldElement('a', {
+				{'href',RelUrl({'foo'}, {params={{'t', '10m'}}, hash="x1"}) }
+			}, "world")
+		end)
 	end)
-end))
+)
 print()
 
 
