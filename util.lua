@@ -39,4 +39,41 @@ M.xmap = function(xss, f)
 	return ys
 end
 
+
+-- inEnv: Run the block with the given table as the environment.
+-- The second argument MUST be an anonymous callback with `_ENV` as its first argument.
+-- Ignores the environment of the callee, uses Util's global environment instead.
+do
+	
+	local function layer_envs(parent, child)
+		return setmetatable({}, {
+			__index = function(self, k)
+				local v = child[k]
+				if v == nil then
+					v = parent[k]
+				end
+				return v
+			end,
+			__newindex = function()
+				--I don't know what would be sensible to do here
+				error("Cannot set globals inside withEnv")
+			end
+		})
+	end
+	
+	if 1 == ((function(_ENV) return _G end)({_G=1})) then --shadow an existing global to avoit triggering strict.lua
+		--Lua 5.2 environments
+		M.inEnv = function(env, body)
+			return body(layer_envs(_ENV, env))
+		end
+	elseif setfenv then
+		--Lua 5.1
+		M.inEnv = function(env, body)
+			local _env = layer_envs(getfenv(), env)
+			setfenv(body, _env)
+			return body(_env)
+		end
+	end
+end
+
 return M

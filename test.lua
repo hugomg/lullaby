@@ -18,27 +18,26 @@ sax.print_dom(sax.to_dom(stream))
 print("=======")
 
 local H = require 'html'
-local AbsUrl = H.AbsUrl
-local RelUrl = H.RelUrl
-local Raw    = H.Raw
+local U = require 'util'
 
-H.prettyPrintTo(io.stdout,
-	H.Document("Hello", function()
-		H.SPAN({{'onclick', Raw'alert("oi")'}}, 'as<d')
-		H.IMG({{'src', AbsUrl('http', 'www.pudim.com.br')}, {'alt', "Pudim" }})
-		H.DIV({{'class',"FOO"}}, function()
-			H.PRE({}, 'XXX')
-			H.A({
-				{'href',AbsUrl('http', 'www.example.com', {'a','b'}, {params={{'t', '10m'}, {'x', 'y'}}, hash="x1"}) }
-			}, "hello")
-			H.A({
-				{'href',AbsUrl('http', 'www.google.com') }
-			}, "google")
-			H.A({
-				{'href',RelUrl({'foo'}, {params={{'t', '10m'}}, hash="x1"}) }
-			}, "world")
+U.inEnv(H, function(_ENV)
+	prettyPrintTo(io.stdout,
+		Document("Hello", function()
+			SPAN({{'onclick', Raw'alert("oi")'}}, 'as<d')
+			IMG({{'src', AbsUrl('http', 'www.pudim.com.br')}, {'alt', "Pudim" }})
+			DIV({{'class',"FOO"}}, function()
+				PRE({}, 'XXX')
+				A({
+					{'href',AbsUrl('http', 'www.example.com', {'a','b'}, {params={{'t', '10m'}, {'x', 'y'}}, hash="x1"}) }
+				}, "hello")
+				A({
+					{'href',AbsUrl('http', 'www.google.com') }
+				}, "google")
+				A({
+					{'href',RelUrl({'foo'}, {params={{'t', '10m'}}, hash="x1"}) }
+				}, "world")
+			end)
 		end)
-	end)
-)
-print()
-
+	)
+	print()
+end)
