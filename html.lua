@@ -180,10 +180,7 @@ local function case_insensitive_pattern(str)
 	end))
 end
 
-local function YieldElement(elemname, attrs, body)
-
-	elemname = elemname:lower()
-	local elem = assert(ElemMap[elemname])
+local function YieldElement(elem, attrs, body)
 	if elem.kind == 'Flow' then
 		--everything is allowed
 	elseif elem.kind == 'Void' then
@@ -191,8 +188,8 @@ local function YieldElement(elemname, attrs, body)
 	elseif elem.kind == 'Raw' then
 		assert((isRawType(body)))
 		local bodystr = body.value
-		if string.find(bodystr, '</'..case_insensitive_pattern(elemname)..'[\t\f\n\r >/]') then
-			error(string.format("Close tag in raw context for %s", elemname))
+		if string.find(bodystr, '</'..case_insensitive_pattern(elem.name)..'[\t\f\n\r >/]') then
+			error(string.format("Close tag in raw context for %s", elem.name))
 		end
 	else
 		error('impossible')
@@ -200,12 +197,13 @@ local function YieldElement(elemname, attrs, body)
 	
 	-- Check attributes;
 	
-	for _, attrname, attrvalue in U.xpairs(attrs) do
-		attrname = attrname:lower()
-		local attr = AttrMap[attrname]
+	for _, attr, attrvalue in U.xpairs(attrs) do
 		
-		if not attr.allowed_on[elemname] then
-			error(string.format("Attribute %q not allowed on tag %q", attrname, elemname))
+		if not attr then
+			error(string.format("Unknown attribute %q", attrname))
+		end
+		if not attr.allowed_on[elem.name] then
+			error(string.format("Attribute %q not allowed on tag %q", attr.name, elem.name))
 		end
 		
 		if attr.kind == 'Text' then
@@ -222,7 +220,7 @@ local function YieldElement(elemname, attrs, body)
 				
 	end
 
-	sax.EmitStartEvent(elemname, attrs)
+	sax.EmitStartEvent(elem.name, attrs)
 	if     type(body) == 'nil' then
 		-- No contents.
 	elseif type(body) == 'string' then
@@ -232,7 +230,7 @@ local function YieldElement(elemname, attrs, body)
 	else
 		error("bad type")
 	end
-	sax.EmitEndEvent(elemname)
+	sax.EmitEndEvent(elem.name)
 end
 
 ---
@@ -248,8 +246,11 @@ H.Raw = Raw
 for _, elem in pairs(ElemMap) do
 	H[elem.name:upper()] = function(args)
 		local body = args[1]
-		local attrs = tableToPairs(args)
-		return YieldElement(elem.name, attrs, body)
+		local attrs = U.xmap(tableToPairs(args), function(name, v)
+			local attr = assert(AttrMap[name:lower()])
+			return {attr, v}
+		end)
+		return YieldElement(elem, attrs, body)
 	end
 end
 
@@ -274,14 +275,13 @@ local function _printTo(indent, file, stream)
 			
 		Start = function(depth, evt)
 			file:write('<'..evt.tagname)
-			for _, attrname, attrvalue in U.xpairs(evt.attrs) do
-				local attr = AttrMap[attrname]
+			for _, attr, attrvalue in U.xpairs(evt.attrs) do
 				if attr.kind == 'Boolean'then
 					if attrvalue then
 						file:write(string.format(' %s', attrname))
 					end
 				else
-					file:write(string.format(' %s="%s"', attrname, escape.html_double_quoted_attribute(tostring(attrvalue))))
+					file:write(string.format(' %s="%s"', attr.name, escape.html_double_quoted_attribute(tostring(attrvalue))))
 				end
 			end
 			

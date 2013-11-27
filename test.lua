@@ -24,7 +24,7 @@ U.inEnv(H, function(_ENV)
 	prettyPrintTo(io.stdout,
 		Document("Hello", function()
 			SPAN{ onclick=Raw'alert("oi")', 'as<d'}
-			IMG{ src=AbsUrl{'http', 'www.pudim.com.br'}, alt="Pudim" }
+			IMG{ SRC=AbsUrl{'http', 'www.pudim.com.br'}, alt="Pudim" }
 			DIV{ class="FOO", function()
 				PRE{'XXX'}
 				A{"Full",
