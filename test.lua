@@ -36,7 +36,7 @@ U.inEnv(H, function(_ENV)
 					href=AbsUrl{'http', 'www.example.com', {'a','b.html'}, params={t='10m',x='y'}, hash="x1"}}
 				A{"abs", 
 					href=AbsUrl{'http', 'www.google.com'}}
-				A{"no scheme", 
+				A{"no scheme", ['data-foo']=Raw"qqq",
 					href=AbsUrl{nil, 'www.google.com'}}
 				A{"absolute path", 
 					href=AbsUrl{nil, nil, {'x', 'y', 'z.html'}}}

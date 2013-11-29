@@ -186,10 +186,10 @@ local function YieldHtml(html)
 	sax.EmitTextEvent(html)
 end
 
-local function YieldElement(elem, attrs, body)
+local function YieldElement(elemname, attrs, body)
 	
 	-- Check element contents
-	
+	local elem = ElemMap[elemname:lower()]
 	if elem.kind == 'Flow' then
 		--everything is allowed
 	elseif elem.kind == 'Void' then
@@ -208,29 +208,30 @@ local function YieldElement(elem, attrs, body)
 	
 	-- Check attributes:
 	
-	local event_attrs = U.xmap(attrs, function(attr, attrvalue)
-		if not attr then
-			error(string.format("Unknown attribute %q", attr.name))
-		end
-		if not attr.allowed_on[elem.name] then
-			error(string.format("Attribute %q not allowed on tag %q", attr.name, elem.name))
-		end
+	local event_attrs = U.xmap(attrs, function(attrname, attrvalue)
 		
 		if not isRawType(attrvalue) then
+			
+			local attr = AttrMap[attrname:lower()]
+			if not attr then
+				error(string.format("Unknown attribute %q", attrname))
+			end
+			if not attr.allowed_on[elem.name] then
+				error(string.format("Attribute %q not allowed on tag %q", attrname, elem.name))
+			end
+		
 			if attr.kind == 'Text' then
 				assert(type(attrvalue) == 'string')
 			elseif attr.kind == 'Boolean' then
 				assert(type(attrvalue) == 'boolean')
 			elseif attr.kind == 'URL' then
 				assert((isUrlType(attrvalue)))
-			elseif attr.kind == 'Raw' then
-				assert(false)
 			else
 				error('impossible')
 			end
 		end
 		
-		return {attr.name, attrvalue}
+		return {attrname, attrvalue}
 	end)
 
 	sax.EmitStartEvent(elem.name, event_attrs)
@@ -264,11 +265,8 @@ H.Raw = Raw
 for _, elem in pairs(ElemMap) do
 	H[elem.name:upper()] = function(args)
 		local body = args[1]
-		local attrs = U.xmap(tableToPairs(args), function(name, v)
-			local attr = assert(AttrMap[name:lower()])
-			return {attr, v}
-		end)
-		return YieldElement(elem, attrs, body)
+		local attrs = tableToPairs(args)
+		return YieldElement(elem.name, attrs, body)
 	end
 end
 
@@ -432,14 +430,13 @@ return H
 	-- Content Models --
 	
 	Normal elements are actually divided in many subcategories (Flow, Phrasing, Sectioning, etc) and there are many restrictions
-	as to what elements can be descendents of each other. For example, Phrasing elements ,such as `span,` are not allowed to contain
-	Flow elements, such `div,` meaning the following HTML
+	as to what elements can be descendents of each other. For example, `div` elements are not allowed inside `p` so 
 	
-	  <span><div>x</div></span>
+	  <p><div>x</div></p>
 	
 	actually gets converted to a DOM that is equivalent to
 	
-	  <span></span><div>x</div>
+	  <p></p><div>x</div><p></p>
 	
 	This can be very unintuitive but unfortunately these content model restrictions are very complex to fully enforce.
 	However, an HTML validator should be able to detect these violations.
