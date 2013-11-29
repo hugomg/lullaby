@@ -189,7 +189,7 @@ local function YieldElement(elem, attrs, body)
 	elseif elem.kind == 'Raw' then
 		assert((isRawType(body)))
 		local bodystr = body.value
-		if string.find(bodystr, '</') then
+		if string.find(bodystr, '</', 1, true) then
 			-- Technically, we could allow "</" when its not followed by the corresponding tag name
 			-- (case-insensitively). However, I would rather be more strict just in case.
 			error(string.format("Close tag in raw context for %s", elem.name))
@@ -238,6 +238,17 @@ local function YieldElement(elem, attrs, body)
 	sax.EmitEndEvent(elem.name)
 end
 
+local function YieldComment(raw)
+	if not isRawType(raw) then
+		error("HTML contents are raw text")
+	end
+	local text = tostring(raw)
+	if string.find(text, '--', 1, true) then
+		error("Html comments must not contain the substring \"--\"")
+	end
+	sax.EmitCommentEvent(text)
+end
+
 --======
 --= Public Html constructors
 --======
@@ -260,6 +271,7 @@ for _, elem in pairs(ElemMap) do
 end
 
 H.Text = YieldText
+H.Comment = YieldComment
 
 -- string, function -> stream
 local function Document(title, body)
@@ -322,6 +334,10 @@ local function _printTo(indent, file, stream)
 				file:write('>')
 			end
 		end,
+		
+		Comment = function(_, evt)
+			file:write('<!--', evt.text, '-->')
+		end,
 	})
 end
 
@@ -329,7 +345,7 @@ end
 H.printTo       = function(file, doc) return _printTo(false, file, doc) end
 
 --Serialize an html document stream, inserting linebreaks and indentation.
---Whitespace gets inserted inside the opening tags so the resulting DOMshould be the same
+--Whitespace gets inserted inside the tags so the resulting DOMshould be the same
 --as the compact serialization.
 H.prettyPrintTo = function(file, doc) return _printTo(true,  file, doc) end
 

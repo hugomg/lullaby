@@ -8,26 +8,33 @@ local yield = coroutine.yield
 
 -- string, list[{string,string}] -> Evt
 local function StartEvent(tagname, attrs)
-  return {tag='START', tagname=tagname, attrs=attrs}
+  return {evttype='START', tagname=tagname, attrs=attrs}
 end
 
 -- string -> Evt
 local function TextEvent(text)
-  return {tag='TEXT', text=text}
+  return {evttype='TEXT', text=text}
 end
 
 -- string -> Evt
 local function EndEvent(tagname)
-  return {tag='END', tagname=tagname}
+  return {evttype='END', tagname=tagname}
 end
 
-Exports.StartEvent = StartEvent
-Exports.TextEvent = TextEvent
-Exports.EndEvent = EndEvent
+-- string -> Evt
+local function CommentEvent(text)
+	return {evttype='COMMENT', text=text}
+end
 
-Exports.EmitStartEvent = function(...) return yield(StartEvent(...)) end
-Exports.EmitTextEvent  = function(...) return yield(TextEvent(...)) end
-Exports.EmitEndEvent   = function(...) return yield(EndEvent(...)) end
+Exports.StartEvent   = StartEvent
+Exports.TextEvent    = TextEvent
+Exports.EndEvent     = EndEvent
+Exports.CommentEvent = CommentEvent
+
+Exports.EmitStartEvent   = function(...) return yield(StartEvent(...)) end
+Exports.EmitTextEvent    = function(...) return yield(TextEvent(...)) end
+Exports.EmitEndEvent     = function(...) return yield(EndEvent(...)) end
+Exports.EmitCommentEvent = function(...) return yield(CommentEvent(...)) end
 
 ----------------
 -- SAX Iterators
@@ -77,14 +84,16 @@ local function stream_foreach(stream, handlers)
 	local onStart = assert(handlers.Start)
 	local onText = assert(handlers.Text)
 	local onEnd = assert(handlers.End)
+	local onComment = handlers.Comment or (function() end)
 	
 	--TODO: make contracts indempotent
 	-- stream = assert_sax(stream)
 	
 	for evt in stream do
-		if     evt.tag == 'START' then onStart(evt)
-		elseif evt.tag == 'TEXT' then onText(evt)
-		elseif evt.tag == 'END' then onEnd(evt)
+		if     evt.evttype == 'START' then onStart(evt)
+		elseif evt.evttype == 'TEXT' then onText(evt)
+		elseif evt.evttype == 'END' then onEnd(evt)
+		elseif evt.evttype == 'COMMENT' then onComment(evt)
 		else error('pattern') end
 	end
 end
@@ -119,6 +128,7 @@ local function fold_stream(stream, initial_state, handlers)
   local onStart = assert(handlers.Start)
   local onText = assert(handlers.Text)
   local onEnd = assert(handlers.End)
+	local onComment = handlers.Comment or (function() return nil end)
   
   local depth = 0 -- can't use the `#` operator because states can be nil
 	local ancestor_states = {}
@@ -138,6 +148,9 @@ local function fold_stream(stream, initial_state, handlers)
 			ancestor_states[depth] = nil
 			depth = depth - 1
 			state = default(parent_state, onEnd(parent_state, state, evt))
+		end,
+		Comment = function(evt)
+			state = default(state, onComment(state, evt))
 		end,
 	})
   

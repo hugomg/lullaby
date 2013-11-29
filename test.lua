@@ -23,6 +23,7 @@ local U = require 'util'
 U.inEnv(H, function(_ENV)
 	prettyPrintTo(io.stdout,
 		Document("Hello", function()
+			Comment(Raw"this is a comment")
 			SPAN{ onclick=Raw'alert("oi")', 'as<d'}
 			IMG{ SRC=AbsUrl{'http', 'www.pudim.com.br'}, alt="Pudim" }
 			DIV{ class="FOO", function()
