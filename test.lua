@@ -26,6 +26,9 @@ U.inEnv(H, function(_ENV)
 			SPAN{ onclick=Raw'alert("oi")', 'as<d'}
 			IMG{ SRC=AbsUrl{'http', 'www.pudim.com.br'}, alt="Pudim" }
 			DIV{ class="FOO", function()
+				BUTTON{disabled=true, function()
+					Text("Click me")
+				end}
 				PRE{'XXX'}
 				A{"Full",
 					href=AbsUrl{'http', 'www.example.com', {'a','b.html'}, params={t='10m',x='y'}, hash="x1"}}
@@ -41,6 +44,8 @@ U.inEnv(H, function(_ENV)
 					href=RelUrl{nil, params={t='10m'}, hash="x3"}}
 				A{"just hash",
 					href=RelUrl{nil, hash="x4"}}
+				A{"raw",
+					href=Raw("http://www.example.com")}
 			end}
 		end)
 	)

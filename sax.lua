@@ -6,7 +6,7 @@ local yield = coroutine.yield
 --SAX Stream events
 -------------------
 
--- (string, map[string->string]) -> Evt
+-- string, list[{string,string}] -> Evt
 local function StartEvent(tagname, attrs)
   return {tag='START', tagname=tagname, attrs=attrs}
 end
@@ -36,6 +36,8 @@ Exports.EmitEndEvent   = function(...) return yield(EndEvent(...)) end
 -- each time its called and `nil` to signal the end of the stream.
 -- Additionally, every open tag should have a matching close tag.
 
+-- Contract checker for SAX streams. Receives a SAX stream and 
+-- retuns a version of the stream that verifies SAX invariants as its called.
 local function assert_stream(stream)
 	
 	local tag_stack = {}
@@ -65,11 +67,12 @@ local function assert_stream(stream)
   end
 end
 
--- Create a new SAX iterator given a coroutine body
+-- Create a SAX stream given a function that yields SAX events.
 local function sax_from_coro(body)
   return assert_stream(coroutine.wrap(body))
 end
 
+-- External iterator for SAX streams
 local function stream_foreach(stream, handlers)
 	local onStart = assert(handlers.Start)
 	local onText = assert(handlers.Text)
@@ -147,13 +150,14 @@ Exports.fold_stream = fold_stream
 -- DOM
 ------
 
+-- Convert a stream of SAX events into a tree representation of the document.
 local function sax_to_dom(stream)
-  local root = fold_stream(stream, {tag='TAG', tagname='ROOT', attrs={}, children={}}, {
+  local root = fold_stream(stream, {nodetype='TAG', tagname='ROOT', attrs={}, children={}}, {
     Start = function(st, evt)
-      return {tag='TAG', tagname=evt.tagname, attrs=evt.attrs, children={}}
+      return {nodetype='TAG', tagname=evt.tagname, attrs=evt.attrs, children={}}
     end,
     Text = function(st, evt)
-      table.insert(st.children, {tag='TEXT', text=evt.text})
+      table.insert(st.children, {nodetype='TEXT', text=evt.text})
     end,
     End = function(st, cst, evt)
       table.insert(st.children, cst)
@@ -161,18 +165,18 @@ local function sax_to_dom(stream)
   })
   return root.children[1]
 end
-   
+
 local function print_dom(node)
   local function go(node, indent)
     for i=1,indent do
       io.write('  ')
     end
-    if node.tag == 'TAG' then
+    if node.nodetype == 'TAG' then
       io.write('<', node.tagname, '>\n')
       for _, child in ipairs(node.children) do
         go(child, indent+1)
       end
-    elseif node.tag == 'TEXT' then
+    elseif node.nodetype == 'TEXT' then
       io.write('"', node.text, '"\n')
     else
       error('pattern')
