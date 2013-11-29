@@ -175,7 +175,15 @@ local function RelUrl(args)
 end
 
 local function YieldText(text)
+	assert(type(text) == 'string')
 	sax.EmitTextEvent(text)
+end
+
+--I'm shoehorning Raw HTML under a text event to avoid having to
+-- modify the SAX infrastructure.
+local function YieldHtml(html)
+	assert(isRawType(html))
+	sax.EmitTextEvent(html)
 end
 
 local function YieldElement(elem, attrs, body)
@@ -238,27 +246,21 @@ local function YieldElement(elem, attrs, body)
 	sax.EmitEndEvent(elem.name)
 end
 
-local function YieldComment(raw)
-	if not isRawType(raw) then
-		error("HTML contents are raw text")
-	end
-	local text = tostring(raw)
-	if string.find(text, '--', 1, true) then
-		error("Html comments must not contain the substring \"--\"")
-	end
-	sax.EmitCommentEvent(text)
-end
-
 --======
 --= Public Html constructors
 --======
 
 local H = {} --Exports
 
+-- Url Datatype
 H.AbsUrl = AbsUrl
 H.RelUrl = RelUrl
+
+-- Unsafe string datatype
 H.Raw = Raw
 
+-- Element constructors
+-- usage: TAGNAME{ attr=value, body }
 for _, elem in pairs(ElemMap) do
 	H[elem.name:upper()] = function(args)
 		local body = args[1]
@@ -270,15 +272,25 @@ for _, elem in pairs(ElemMap) do
 	end
 end
 
+-- Text nodes
 H.Text = YieldText
-H.Comment = YieldComment
+
+-- Raw HTML (escape valve for ansty hacks)
+H.RawHtml = YieldHtml
 
 -- string, function -> stream
-local function Document(title, body)
+local function Document(args)
+	local title = assert(args.title)
+	local body = assert(args.body)
+	local encoding = args.encoding
+	
 	assert(type(title) == 'string')
 	return sax.from_coro(function()
 		H.HTML{function()
 			H.HEAD{function()
+				if encoding then
+					H.META{ charset=Raw(encoding) }
+				end
 				H.TITLE{title}
 			end}
 			H.BODY{body}
@@ -322,7 +334,11 @@ local function _printTo(indent, file, stream)
 		end,
 		
 		Text = function(_, evt)
-			file:write(escape.html_text(evt.text))
+			if isRawType(evt.text) then
+				file:write(tostring(evt.text))
+			else
+				file:write(escape.html_text(evt.text))
+			end
 		end,
 		
 		End = function(depth, _, evt)
@@ -333,10 +349,6 @@ local function _printTo(indent, file, stream)
 				end
 				file:write('>')
 			end
-		end,
-		
-		Comment = function(_, evt)
-			file:write('<!--', evt.text, '-->')
 		end,
 	})
 end

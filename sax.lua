@@ -29,12 +29,10 @@ end
 Exports.StartEvent   = StartEvent
 Exports.TextEvent    = TextEvent
 Exports.EndEvent     = EndEvent
-Exports.CommentEvent = CommentEvent
 
 Exports.EmitStartEvent   = function(...) return yield(StartEvent(...)) end
 Exports.EmitTextEvent    = function(...) return yield(TextEvent(...)) end
 Exports.EmitEndEvent     = function(...) return yield(EndEvent(...)) end
-Exports.EmitCommentEvent = function(...) return yield(CommentEvent(...)) end
 
 ----------------
 -- SAX Iterators
@@ -84,7 +82,6 @@ local function stream_foreach(stream, handlers)
 	local onStart = assert(handlers.Start)
 	local onText = assert(handlers.Text)
 	local onEnd = assert(handlers.End)
-	local onComment = handlers.Comment or (function() end)
 	
 	--TODO: make contracts indempotent
 	-- stream = assert_sax(stream)
@@ -93,7 +90,6 @@ local function stream_foreach(stream, handlers)
 		if     evt.evttype == 'START' then onStart(evt)
 		elseif evt.evttype == 'TEXT' then onText(evt)
 		elseif evt.evttype == 'END' then onEnd(evt)
-		elseif evt.evttype == 'COMMENT' then onComment(evt)
 		else error('pattern') end
 	end
 end
@@ -128,7 +124,6 @@ local function fold_stream(stream, initial_state, handlers)
   local onStart = assert(handlers.Start)
   local onText = assert(handlers.Text)
   local onEnd = assert(handlers.End)
-	local onComment = handlers.Comment or (function() return nil end)
   
   local depth = 0 -- can't use the `#` operator because states can be nil
 	local ancestor_states = {}
@@ -148,9 +143,6 @@ local function fold_stream(stream, initial_state, handlers)
 			ancestor_states[depth] = nil
 			depth = depth - 1
 			state = default(parent_state, onEnd(parent_state, state, evt))
-		end,
-		Comment = function(evt)
-			state = default(state, onComment(state, evt))
 		end,
 	})
   

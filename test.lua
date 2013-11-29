@@ -22,9 +22,10 @@ local U = require 'util'
 
 U.inEnv(H, function(_ENV)
 	prettyPrintTo(io.stdout,
-		Document("Hello", function()
-			Comment(Raw"this is a comment")
+		Document{encoding="utf-8", title="Hello", body=function()
+			RawHtml(Raw"<!-- This is a comment -->")
 			SPAN{ onclick=Raw'alert("oi")', 'as<d'}
+			RawHtml(Raw"<span>OI</span>")
 			IMG{ SRC=AbsUrl{'http', 'www.pudim.com.br'}, alt="Pudim" }
 			DIV{ class="FOO", function()
 				BUTTON{disabled=true, function()
@@ -48,7 +49,7 @@ U.inEnv(H, function(_ENV)
 				A{"raw",
 					href=Raw("http://www.example.com")}
 			end}
-		end)
+		end}
 	)
 	print()
 end)
