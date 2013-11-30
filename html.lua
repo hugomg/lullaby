@@ -196,9 +196,15 @@ local function RelUrl(args)
 	return _Url(nil, nil, args[1], args, false)
 end
 
+-- Help detect missing function wrappers:
+-- SPAN{B{"x"}} would convert to <b>x</b><span></span>
+-- (not what we want!)
+local YIELDER_RETURN = {'yielder_return'}
+
 local function YieldText(text)
 	assert(type(text) == 'string')
 	sax.EmitTextEvent(text)
+	return YIELDER_RETURN
 end
 
 --I'm shoehorning Raw HTML under a text event to avoid having to
@@ -206,6 +212,7 @@ end
 local function YieldHtml(html)
 	assert(isRawType(html))
 	sax.EmitTextEvent(html)
+	return YIELDER_RETURN
 end
 
 local function YieldElement(elemname, attrs, body)
@@ -272,7 +279,9 @@ local function YieldElement(elemname, attrs, body)
 	end)
 
 	sax.EmitStartEvent(elem.name, event_attrs)
-	if     type(body) == 'nil' then
+	if body == YIELDER_RETURN then
+		error("Missing function wrapper in element body")
+	elseif type(body) == 'nil' then
 		-- No contents.
 	elseif type(body) == 'string' then
 		YieldText(body)
@@ -282,6 +291,8 @@ local function YieldElement(elemname, attrs, body)
 		error("bad type")
 	end
 	sax.EmitEndEvent(elem.name)
+	
+	return YIELDER_RETURN
 end
 
 --======
@@ -301,6 +312,7 @@ H.Raw = Raw
 -- usage: TAGNAME{ attr=value, body }
 for _, elem in pairs(ElemMap) do
 	H[elem.name:upper()] = function(args)
+		assert(type(args) == 'table')
 		local body = args[1]
 		local attrs = tableToPairs(args)
 		return YieldElement(elem.name, attrs, body)

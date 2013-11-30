@@ -67,6 +67,7 @@ U.inEnv(H, function(_ENV)
 							href=Raw("http://www.example.com")}
 					end}
 				end}
+				--SPAN{B{"x"}} --this line should raise an error
 			end}
 		end}
 	)
