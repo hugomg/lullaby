@@ -39,16 +39,25 @@ local function html_set(names)
 	return U.Set(U.map(names, string.lower))
 end
 
-local ElemSet = html_set(U.xmap(html_data.Elems, function(name) return name end))
+local UniverseSet = setmetatable({}, {
+	__index = function() return true end,
+})
 
 local AttrMap = {}
 for _, name, kind, allowed_elems in U.xpairs(html_data.Attrs) do
 	name = name:lower()
-  AttrMap[name] = {
-		name = name,
-		kind = kind,
-		allowed_on = (allowed_elems == true and ElemSet or html_set(allowed_elems)),
-	}
+	local attr = {}
+	attr.name = name
+	attr.kind = kind[1]
+	if kind[1] == 'Enum' then
+		attr.allowed_values = U.Set(kind[2])
+	end
+	if allowed_elems == true then
+		attr.allowed_on = UniverseSet
+	else
+		attr.allowed_on = html_set(allowed_elems)
+	end
+  AttrMap[name] = attr
 end
 
 
@@ -131,6 +140,7 @@ UrlMt.__tostring = function(self)
 	
 	if self.scheme then
 		w(self.scheme)
+		w(':')
 	end
 	
 	if self.host then	
@@ -190,7 +200,7 @@ local function YieldElement(elemname, attrs, body)
 	
 	-- Check element contents
 	local elem = ElemMap[elemname:lower()]
-	if elem.kind == 'Flow' then
+	if elem.kind == 'Normal' then
 		--everything is allowed
 	elseif elem.kind == 'Void' then
 		assert(type(body) == 'nil')
@@ -221,11 +231,26 @@ local function YieldElement(elemname, attrs, body)
 			end
 		
 			if attr.kind == 'Text' then
-				assert(type(attrvalue) == 'string')
+				if type(attrvalue) ~= 'string' then
+					error(string.format("Attribute %q received a %s; expected string", attrname, type(attrvalue)))
+				end
+			elseif attr.kind == 'Enum' then
+				if type(attrvalue) ~= 'string' then
+					error(string.format("Attribute %q received a %s; expected string", attrname, type(attrvalue)))
+				end
+				if not attr.allowed_values[attrvalue] then
+					error(string.format("Attribute %q does not allow value %q", attrname, tostring(attrvalue)))
+				end
 			elseif attr.kind == 'Boolean' then
-				assert(type(attrvalue) == 'boolean')
+				if type(attrvalue) ~= 'boolean' then
+					error(string.format("Attribute %q received a %s; expected boolean", attrname, type(attrvalue)))
+				end
 			elseif attr.kind == 'URL' then
-				assert((isUrlType(attrvalue)))
+				if not isUrlType(attrvalue) then
+					error(string.format("Attribute %q expected an URL or Raw value", attrname))
+				end
+			elseif attr.kind == 'Raw' then
+				error(string.format("Attribute %q is unsafe and expects Raw values", attrname))
 			else
 				error('impossible')
 			end
@@ -420,7 +445,7 @@ return H
 	4) Escapable Text Elements (ex.: textarea, title)
 
 		These elements must not contain any elements, only text. The text is escapable with HTML entities.
-		This library treats these elements as regular Flow elements. Incorrectly inserted child elements must
+		This library treats these elements as Normal elements. Incorrectly inserted child elements must
 		be detected with an HTML validator.
 	
 	4) Foreign Elements (ex.: MathML, SVG)
@@ -452,7 +477,15 @@ return H
 	
 		Safe attributes that can receive any textual user-suplied value.
 		This includes attributes that really can receive any value (for example, `label` or `title`)
-		and attributes that have restrictions that can be caught by an HTML validator.
+		and attributes that shouldn't be receiving user-supplied data (`id`, `class`) but that aren't
+		really prone to injection attacks.
+		
+		  DIV{ id="a", title=get_title() }
+	
+	2) Enumerated attributes (ex.: contenteditable, formmethod)
+
+		These attributes only accept string values from a fixed set. For example, `formmethod` only
+		allows "POST" and "GET" as values.
 	
 	2) Boolean: (ex.: async, disabled)
 	  
@@ -517,8 +550,15 @@ return H
 
 	Finally, you can use a `Raw` wrapper to bypass the usual attribute checking:
 	
-	  A{ "linke text", href=Raw("http://www.example.com") }
+		-- Ignore typical datatype restrictions:
+	  DIV{ contenteditable=Raw"asdasdasd" }
+	  A{ "linked text", href=Raw("http://www.example.com") }
 		BUTTON{ disabled=Raw("disabled") }
-
+		
+		-- Place attributes in elements where they are not expected:
+		DIV{ for=Raw"asd" }
+		
+		-- Use custom attributes not mentioned in the spec.
+		DIV{ ["fb:foo"]=Raw"bar" }  -- <div fb:foo="bar"></div>
 
 --]==]
