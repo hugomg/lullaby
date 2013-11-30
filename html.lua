@@ -60,6 +60,18 @@ for _, name, kind, allowed_elems in U.xpairs(html_data.Attrs) do
   AttrMap[name] = attr
 end
 
+-- data-xxx attributes:
+setmetatable(AttrMap, {
+	__index = function(self, key)
+		local name = key:lower()
+		if string.match(name, 'data-[%w-]+') then
+			return {name=name, kind='Text', allowed_on=UniverseSet}
+		else
+			return nil
+		end
+	end
+})
+
 
 --======
 --= Internal HTML constructors.

@@ -43,7 +43,7 @@ U.inEnv(H, function(_ENV)
 							href=AbsUrl{'http', 'www.google.com'}}
 					end}
 					LI{function()
-						A{"no scheme", ['data-foo']=Raw"qqq",
+						A{"no scheme", ['data-foo']="true",
 							href=AbsUrl{nil, 'www.google.com'}}
 					end}
 					LI{function()
