@@ -2,7 +2,7 @@
 --Do not use these directly unless you are sure that you are using them in the correct context.
 --The smart constructors and serializers from html.lua should take care of that.
 
-local U = require 'util'
+local U = require 'lullaby.util'
 
 local Exports = {}
 

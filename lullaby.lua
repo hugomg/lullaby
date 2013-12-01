@@ -1,7 +1,7 @@
-local html_data = require 'html_data'
-local sax = require 'sax'
-local U = require 'util'
-local escape = require 'escape'
+local html_data = require 'lullaby.html_data'
+local sax = require 'lullaby.sax'
+local U = require 'lullaby.util'
+local escape = require 'lullaby.escape'
 
 
 --======

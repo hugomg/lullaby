@@ -1,5 +1,5 @@
-require 'strict'
-local sax = require 'sax'
+require 'lullaby.strict'
+local sax = require 'lullaby.sax'
 
 local yield = coroutine.yield
 
