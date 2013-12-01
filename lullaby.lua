@@ -279,6 +279,7 @@ local function YieldElement(elemname, attrs, body)
 	end)
 
 	sax.EmitStartEvent(elem.name, event_attrs)
+	
 	if body == YIELDER_RETURN then
 		error("Missing function wrapper in element body")
 	elseif type(body) == 'nil' then
@@ -290,6 +291,7 @@ local function YieldElement(elemname, attrs, body)
 	else
 		error("bad type")
 	end
+	
 	sax.EmitEndEvent(elem.name)
 	
 	return YIELDER_RETURN
@@ -374,9 +376,7 @@ local function _printToFile(indent, file, stream_body)
 				end
 			end
 			
-			local eats_newline = evt.tagname == 'pre' or evt.tagname == 'textarea'
-			
-			if indent and not eats_newline then
+			if indent then
 				if ElemMap[evt.tagname].kind ~= 'Void' then
 					file:write('\n', string.rep('  ', depth+1))
 				else
@@ -385,9 +385,14 @@ local function _printToFile(indent, file, stream_body)
 			end
 			
 			file:write('>')
-			if eats_newline then
+			
+			if evt.tagname == 'pre' or evt.tagname == 'textarea' then
+				--A single newline may be placed immediately after the start tag of pre and textarea elements. [...]
+				--The otherwise optional newline must be included if the element's contents themselves start with a
+				--newline (because otherwise the leading newline in the contents would be ignored).
 				file:write("\n")
 			end
+			
 			return depth + 1
 		end,
 		
