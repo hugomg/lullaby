@@ -327,27 +327,38 @@ H.RawHtml = YieldHtml
 
 -- string, function -> stream
 local function Document(args)
-	local title = assert(args.title)
-	local body = assert(args.body)
+	local title = args.title
+	local head = args.head
+	local body = args.body
 	local encoding = args.encoding
-	
-	assert(type(title) == 'string')
-	return sax.from_coro(function()
+
+	return function()
 		H.HTML{function()
 			H.HEAD{function()
 				if encoding then
 					H.META{ charset=Raw(encoding) }
 				end
-				H.TITLE{title}
+				if title then
+					H.TITLE{title}
+				end
+				if head then
+					head()
+				end
 			end}
-			H.BODY{body}
+			H.BODY{function()
+				if body then
+					body()
+				end
+			end}
 		end}
-	end)
+	end
 end
 
 H.Document = Document
 
-local function _printTo(indent, file, stream)
+local function _printTo(indent, file, stream_body)
+	local stream = sax.from_coro(stream_body)
+	
 	file:write("<!DOCTYPE html>\n")
 	sax.fold_stream(stream, 0, {
 			
@@ -401,12 +412,19 @@ local function _printTo(indent, file, stream)
 end
 
 --Compactily serialize an html document stream. Does not insert linebreaks or indentation.
-H.printTo       = function(file, doc) return _printTo(false, file, doc) end
+H.printDocumentToFile       = function(file, doc) return _printTo(false, file, doc) end
 
 --Serialize an html document stream, inserting linebreaks and indentation.
 --Whitespace gets inserted inside the tags so the resulting DOMshould be the same
 --as the compact serialization.
-H.prettyPrintTo = function(file, doc) return _printTo(true,  file, doc) end
+H.prettyPrintDocumentToFile = function(file, doc) return _printTo(true,  file, doc) end
+
+
+-- Runs a callback with all the names in the HTML namespace on the environment.
+-- For compatibility with 5.2, the callback should have exactly one parameter named _ENV
+H.usingHtml = function(body)
+	return U.inEnv(H, body)
+end
 
 return H
 
@@ -506,7 +524,7 @@ return H
 		
 		  DIV{ id="a", title=get_title() }
 	
-	2) Enumerated attributes (ex.: contenteditable, formmethod)
+	2) Enumerated attributes (ex.: contenteditable, method)
 
 		These attributes only accept string values from a fixed set. For example, `formmethod` only
 		allows "POST" and "GET" as values.
