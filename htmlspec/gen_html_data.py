@@ -29,21 +29,21 @@ event_attribute_table = get_table('List of event handler content attributes')
 
 elements = []
 for row in element_table.tbody.find_all('tr'):
-  tagname = row.th.find('a').text
+  links = row.th.find_all('a')
+  for link in links:
+    tagname = link.text
+    allowed_children = row.find_all('td')[3].text
+    if tagname in ('script', 'style'):
+      typ = 'Raw'
+    elif 'empty' in allowed_children:
+      typ = 'Void'
+    else:
+      typ = 'Normal'
 
-  allowed_children = row.find_all('td')[3].text
-  if tagname in ('script', 'style'):
-    typ = 'Raw'
-  elif 'empty' in allowed_children:
-    typ = 'Void'
-  else:
-    typ = 'Normal'
-
-  elements.append({
-    'Name':tagname,
-    'Type':typ,
-  })
-
+    elements.append({
+      'Name':tagname,
+      'Type':typ,
+    })
 
 #
 # Attributes
