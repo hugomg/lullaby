@@ -17,7 +17,7 @@ sax.print_dom(sax.to_dom(stream))
 
 print("=======")
 
-local H = require 'html'
+local H = require 'lullaby'
 
 H.usingHtml(function(_ENV)
 	prettyPrintDocumentToFile(io.stdout,
@@ -79,7 +79,7 @@ H.usingHtml(function(_ENV)
 	)
 end)
 
-local H = require 'html'
+local H = require 'lullaby'
 
 local document = H.Document({
   title = 'My first Document',

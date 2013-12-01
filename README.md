@@ -1,9 +1,9 @@
-LIBNAME
-========
+Lullaby HTML templates
+======================
 
-LIBNAME is a stream-based, Turing-complete template library for HTML. It helps you write complex HTML documents and lets you use familiar Lua constructs instead of forcing you to learn a whole new templating language.
+Lullaby is a stream-based, Turing-complete template library for HTML. It helps you write complex HTML documents and lets you use familiar Lua constructs instead of forcing you to learn a whole new templating language. Its a bit similar to Ruby's [Markaby](https://github.com/markaby/markaby), Perl's [Template::Declare](http://search.cpan.org/~alexmv/Template-Declare-0.46/lib/Template/Declare.pm) and Haskell's [Blaze](http://jaspervdj.be/blaze/).
 
-LIBNAME is written in pure Lua and is compatible with versions 5.1 and 5.2
+Lullaby is written in pure Lua and is compatible with versions 5.1 and 5.2
 
 ##Contents
 * [Instalation](#instalation)
@@ -12,7 +12,7 @@ LIBNAME is written in pure Lua and is compatible with versions 5.1 and 5.2
 * [Element Types](#element-types)
 * [Attribute Types](#attribute-types)
 * [Document](#document)
-* [Pros and cons](#pros-and-cons-of-LIBNAME)
+* [Pros and cons](#pros-and-cons-of-lullaby)
 * [License](#license)
 
 ##Instalation
@@ -21,10 +21,10 @@ $TODO luarocks
 
 ##Quick Start
 
-Here is how we can create a small HTML document using LIBNAME:
+Here is how we can create a small HTML document using Lullaby:
 
 ```lua
-local H = require 'html'
+local H = require 'lullaby'
 
 local document = H.Document({
   title = 'My first Document',
@@ -69,10 +69,10 @@ The `>`s appearing on a separate line from the `<`s might seem strange at first.
 
 ###Avoiding the library prefix
 
-Typing the `H.` prefix over and over can be tiresome. To help with that, you can use the `usingHTML` function to create a local environment where all the names from the LIBNAME namespace are automatically available.
+Typing the `H.` prefix over and over can be tiresome. To help with that, you can use the `usingHTML` function to create a local environment where all the names from the Lullaby namespace are automatically available.
 
 ```lua
-local H = require 'html'
+local H = require 'lullaby'
 
 local document = H.usingHtml(function(_ENV)
   return Document({
@@ -95,7 +95,7 @@ Note that the first parameter of the `usingHtml` callback must be named `_ENV` a
 
 ##Events
 
-In LIBNAME, we create documents by generating a stream of events, instead of constructing a tree-like representation of the DOM. The `printDocument` functions then consume the event stream and convert it into a textual representation of the document.
+In Lullaby, we create documents by generating a stream of events, instead of constructing a tree-like representation of the DOM. The `printDocument` functions then consume the event stream and convert it into a textual representation of the document.
 
 There are two main types of events: text events and tag events. Additionally, there is also a "raw HTML" event for those cases when regular text and tag events won do the trick.
 
@@ -155,7 +155,7 @@ DIV{ STRONG{"Hello"} }
 
 ###Raw HTML
 
-In cases where LIBNAME cannot generate the HTML you are looking for, you can fall back to directly outputting raw, un-escaped HTML:
+In cases where Lullaby cannot generate the HTML you are looking for, you can fall back to directly outputting raw, un-escaped HTML:
 
 ```lua
 --HTML comments:
@@ -174,17 +174,17 @@ For the `script` and `style` elements, the content parameter must be a `Raw` str
 
 Otherwise, an element is considered "Normal" and its allowed to contain anything.
 
-LIBNAME does not attempt to detect nesting restrictions in HTML (for example, `div` is not allowed inside `p`). For these, you should use a separate HTML validator.
+Lullaby does not attempt to detect nesting restrictions in HTML (for example, `div` is not allowed inside `p`). For these, you should use a separate HTML validator.
 
-Additionally, LIBNAME does not support foreign elements, such as MathML and SVG. 
+Additionally, Lullaby does not support foreign elements, such as MathML and SVG. 
 
 ##Attribute Types
 
-To help detect errors and avoid [Cross Site Scripting](https://en.wikipedia.org/wiki/Cross-site_scripting) vulnerabilities, not every HTML attribute in LIBNAME is allowed to receive arbitrary string values. Attributes are classified in the followed categories:
+To help detect errors and avoid [Cross Site Scripting](https://en.wikipedia.org/wiki/Cross-site_scripting) vulnerabilities, not every HTML attribute in Lullaby is allowed to receive arbitrary string values. Attributes are classified in the followed categories:
 
 ###Text attributes
 
-These are safe attributes that can receive user-supplied values without anything too bad happening. LIBNAME represents their values with regular Lua strings.
+These are safe attributes that can receive user-supplied values without anything too bad happening. Lullaby represents their values with regular Lua strings.
 
 Examples: `id`, `class`, `title`
 
@@ -215,7 +215,7 @@ end}
 
 ###Boolean attributes
 
-For some HTML attributes, what really matters is whether the attribute is present or not; The attribute value is ignored and can even be omitted. In these cases, LIBNAME expects a boolean as the attribute value.
+For some HTML attributes, what really matters is whether the attribute is present or not; The attribute value is ignored and can even be omitted. In these cases, Lullaby expects a boolean as the attribute value.
 
 Examples: `autofocus`, `disabled`
 
@@ -231,7 +231,7 @@ BUTTON{disabled=false, "two"}
 
 ###URLs
 
-URLs are complex values and its easy to fall into a trap if we try to build large URLs using string concatenation. Because of this, LIBNAME represents URLs with a special data type and all URL attributes expect to receive a value of this data type.
+URLs are complex values and its easy to fall into a trap if we try to build large URLs using string concatenation. Because of this, Lullaby represents URLs with a special data type and all URL attributes expect to receive a value of this data type.
 
 ```lua
 -- Full URLs consist of a
@@ -266,7 +266,7 @@ As an alternative to using URL objects, its also possible to pass `Raw` URL valu
 
 ###Raw text
 
-Some attributes cannot safely receive user-supplied values. In this case, LIBNAME requires that their values be wrapped in a `Raw` datatype, so that the programmer can demonstrate that he is aware that the attribute is potentially unsafe and should not be receiving user-supplied values without the proper precautions.
+Some attributes cannot safely receive user-supplied values. In this case, Lullaby requires that their values be wrapped in a `Raw` datatype, so that the programmer can demonstrate that he is aware that the attribute is potentially unsafe and should not be receiving user-supplied values without the proper precautions.
 
 Examples: `style`, `media`, `onX` Javascript event handlers.
 
@@ -319,21 +319,21 @@ local document = Document({
 })
 ```
 
-##Pros and cons of LIBNAME
+##Pros and cons of Lullaby
 
-There are many libraries out there for generating HTML. Why should I use LIBNAME over them?
+There are many libraries out there for generating HTML. Why should I use Lullaby over them?
 
 First, the pros:
 
 * Using regular Lua code for things like conditionals, iteration, subtemplates and table access means that there is no need to learn a separate templating DSL.
 
-* LIBNAME is aware that it is generating HTML:
+* Lullaby is aware that it is generating HTML:
   * It can enforce some simple restrictions (correct element names, correct attribute values, matching open and close tags...).
-  * Instead of blindly entity-encoding everything, LIBNAME can use appropriate escaping algorithms depending on the context (element text, attribute  values, url parameters, ...)
+  * Instead of blindly entity-encoding everything, Lullaby can use appropriate escaping algorithms depending on the context (element text, attribute  values, url parameters, ...)
   * No significant indentation whitespace cluttering the resulting DOM.
 
 And now the biggest cons:
 
-* LIBNAME is fairly verbose. Its better suited for documents with lots of tags and little raw text and where you need to do lots of iterations or conditionals. If all you need is to insert a couple of values into a big document with lots of text then all those anonymous functions for the nested tags start becoming a lot of noise.
+* Lullaby is fairly verbose. Its better suited for documents with lots of tags and little raw text and where you need to do lots of iterations or conditionals. If all you need is to insert a couple of values into a big document with lots of text then all those anonymous functions for the nested tags start becoming a lot of noise.
 
-* LIBNAME does not attempt to enforce a strict model-view separation, as [Cosmo](http://cosmo.luaforge.net/), [Mustache](http://mustache.github.io/) or [StringTemplate](http://www.stringtemplate.org/) attempt to. Its your responsibility as the programmer to keep the business logic out of your LIBNAME templates or they could easily become an unmaintainable mess.
+* Lullaby does not attempt to enforce a strict model-view separation, as [Cosmo](http://cosmo.luaforge.net/), [Mustache](http://mustache.github.io/) or [StringTemplate](http://www.stringtemplate.org/) attempt to. Its your responsibility as the programmer to keep the business logic out of your Lullaby templates or they could easily become an unmaintainable mess.
