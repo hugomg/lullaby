@@ -210,8 +210,8 @@ end
 --I'm shoehorning Raw HTML under a text event to avoid having to
 -- modify the SAX infrastructure.
 local function YieldHtml(html)
-	assert(isRawType(html))
-	sax.EmitTextEvent(html)
+	assert(type(html) == 'string')
+	sax.EmitTextEvent(Raw(html))
 	return YIELDER_RETURN
 end
 
@@ -322,7 +322,7 @@ end
 -- Text nodes
 H.Text = YieldText
 
--- Raw HTML (escape valve for ansty hacks)
+-- Raw HTML (escape valve for nasty hacks)
 H.RawHtml = YieldHtml
 
 -- string, function -> stream
@@ -333,6 +333,7 @@ local function Document(args)
 	local encoding = args.encoding
 
 	return function()
+		H.RawHtml("<!DOCTYPE html>\n")
 		H.HTML{function()
 			H.HEAD{function()
 				if encoding then
@@ -356,10 +357,9 @@ end
 
 H.Document = Document
 
-local function _printTo(indent, file, stream_body)
+local function _printToFile(indent, file, stream_body)
 	local stream = sax.from_coro(stream_body)
 	
-	file:write("<!DOCTYPE html>\n")
 	sax.fold_stream(stream, 0, {
 			
 		Start = function(depth, evt)
@@ -411,13 +411,41 @@ local function _printTo(indent, file, stream_body)
 	})
 end
 
+local StringBufferMt = {
+	__index = {	
+		write = function(self, ...)
+			local args = {...}
+			local n = #self.parts
+			for i=1, select('#', ...) do
+				self.parts[n+i] = args[i]
+			end
+		end,
+		to_str = function(self)
+			return table.concat(self.parts)
+		end
+	}
+}
+
+local function StringBuffer()
+	return setmetatable({ parts = {} }, StringBufferMt)
+end
+
+local function _printToString(indent, stream_body)
+	local buffer = StringBuffer()
+	_printToFile(indent, buffer, stream_body)
+	return buffer:to_str()
+end
+
 --Compactily serialize an html document stream. Does not insert linebreaks or indentation.
-H.printDocumentToFile       = function(file, doc) return _printTo(false, file, doc) end
+H.printDocumentToFile       = function(file, doc) return _printToFile(false, file, doc) end
 
 --Serialize an html document stream, inserting linebreaks and indentation.
 --Whitespace gets inserted inside the tags so the resulting DOMshould be the same
 --as the compact serialization.
-H.prettyPrintDocumentToFile = function(file, doc) return _printTo(true,  file, doc) end
+H.prettyPrintDocumentToFile = function(file, doc) return _printToFile(true,  file, doc) end
+
+H.printDocumentToString       = function(doc) return _printToString(false, doc) end
+H.prettyPrintDocumentToString = function(doc) return _printToString(true,  doc) end
 
 
 -- Runs a callback with all the names in the HTML namespace on the environment.

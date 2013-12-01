@@ -93,6 +93,26 @@ end)
 
 Note that the first parameter of the `usingHtml` callback must be named `_ENV` and that, due to the way `usingHtml` is implemented it is forbidden to write to global variabes inside the `usingHtml` block (you can still read from globals though).
 
+###Serializing to a string instead of to a file
+
+If you don want to print the HTML to a file, you can use the `printDocumentToString` functions:
+
+```lua
+local document = H.Document({--[[...]]})
+local s1 = H.printDocumentToString(document)
+local s2 = H.prettyPrintDocumentToString(document)
+```
+
+###Serializing HTML fragments
+
+The document printing functions work with any event stream, not only full documents:
+
+```lua
+H.printDocumentToFile(io.stdout, function()
+  H.SPAN{"Hello World"}
+end)
+```
+
 ##Events
 
 In Lullaby, we create documents by generating a stream of events, instead of constructing a tree-like representation of the DOM. The `printDocument` functions then consume the event stream and convert it into a textual representation of the document.

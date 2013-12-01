@@ -28,9 +28,9 @@ H.usingHtml(function(_ENV)
 				LINK{rel='stylesheet', href=Raw'./foo.css'} 
 			end,
 			body=function()
-				RawHtml(Raw"<!-- This is a comment -->")
+				RawHtml("<!-- This is a comment -->")
 				SPAN{ onclick=Raw'alert("oi")', 'as<d'}
-				RawHtml(Raw"<span>OI</span>")
+				RawHtml("<span>OI</span>")
 				IMG{ SRC=AbsUrl{'http', 'www.pudim.com.br'}, alt="Pudim" }
 				DIV{ class="FOO", ["fb:foo"]=Raw"bar", function()
 					BUTTON{disabled=true, function()
@@ -77,6 +77,7 @@ H.usingHtml(function(_ENV)
 			end,
 		}
 	)
+	print()
 end)
 
 local H = require 'lullaby'
@@ -95,9 +96,16 @@ local document = H.Document({
   end,
 })
 
-print()
+
 print("====")
 H.printDocumentToFile(io.stdout, document)
 print()
+
 print("====")
 H.prettyPrintDocumentToFile(io.stdout, document)
+print()
+
+print("------")
+print("==", H.printDocumentToString(function()
+	H.DIV{"Hello"}
+end))
