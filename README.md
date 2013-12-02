@@ -3,7 +3,7 @@ Lullaby HTML templates
 
 Lullaby is a stream-based, Turing-complete template library for HTML. It helps you write complex HTML documents and lets you use familiar Lua constructs instead of forcing you to learn a whole new templating language. Its a bit similar to Ruby's [Markaby](https://github.com/markaby/markaby), Perl's [Template::Declare](http://search.cpan.org/~alexmv/Template-Declare-0.46/lib/Template/Declare.pm) and Haskell's [Blaze](http://jaspervdj.be/blaze/).
 
-Lullaby is written in pure Lua and is compatible with versions 5.1 and 5.2
+Lullaby is written in pure Lua and should be compatible with versions 5.1 and 5.2
 
 ##Contents
 * [Instalation](#instalation)
@@ -13,11 +13,10 @@ Lullaby is written in pure Lua and is compatible with versions 5.1 and 5.2
 * [Attribute Types](#attribute-types)
 * [Document](#document)
 * [Pros and cons](#pros-and-cons-of-lullaby)
-* [License](#license)
 
 ##Instalation
 
-$TODO luarocks
+$$TODO$$s
 
 ##Quick Start
 
