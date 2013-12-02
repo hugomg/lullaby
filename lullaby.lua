@@ -23,6 +23,11 @@ local function tableToPairs(t)
 end
 
 --======
+--= Error messages
+--======
+
+
+--======
 --= Process html data from the spec
 --======
 
@@ -222,7 +227,10 @@ local function YieldElement(elemname, attrs, body)
 	if elem.kind == 'Normal' then
 		--everything is allowed
 	elseif elem.kind == 'Void' then
-		assert(type(body) == 'nil')
+		if type(body) ~= 'nil' then
+			error(U.Exception('BAD_VOID_CONTENT',
+				string.format("Void element %s should not have contents", elem.name)))
+		end
 	elseif elem.kind == 'Raw' then
 		assert((isRawType(body)))
 		local bodystr = body.value
@@ -281,7 +289,7 @@ local function YieldElement(elemname, attrs, body)
 	sax.EmitStartEvent(elem.name, event_attrs)
 	
 	if body == YIELDER_RETURN then
-		error("Missing function wrapper in element body")
+		error(U.Exception('MISSING_TAG_WRAPPER', "Missing function wrapper in element body"))
 	elseif type(body) == 'nil' then
 		-- No contents.
 	elseif type(body) == 'string' then
@@ -441,16 +449,19 @@ local function _printToString(indent, stream_body)
 	return buffer:to_str()
 end
 
+H._printToFile   = _printToFile
+H._printToString = _printToString
+
 --Compactily serialize an html document stream. Does not insert linebreaks or indentation.
-H.printDocumentToFile       = function(file, doc) return _printToFile(false, file, doc) end
+H.printToFile       = function(file, doc) return _printToFile(false, file, doc) end
 
 --Serialize an html document stream, inserting linebreaks and indentation.
 --Whitespace gets inserted inside the tags so the resulting DOMshould be the same
 --as the compact serialization.
-H.prettyPrintDocumentToFile = function(file, doc) return _printToFile(true,  file, doc) end
+H.prettyPrintToFile = function(file, doc) return _printToFile(true,  file, doc) end
 
-H.printDocumentToString       = function(doc) return _printToString(false, doc) end
-H.prettyPrintDocumentToString = function(doc) return _printToString(true,  doc) end
+H.printToString       = function(doc) return _printToString(false, doc) end
+H.prettyPrintToString = function(doc) return _printToString(true,  doc) end
 
 
 -- Runs a callback with all the names in the HTML namespace on the environment.

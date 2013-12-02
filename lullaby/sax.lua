@@ -8,17 +8,18 @@ local yield = coroutine.yield
 
 -- string, list[{string,string}] -> Evt
 local function StartEvent(tagname, attrs)
-  return {evttype='START', tagname=tagname, attrs=attrs}
+	assert(type(attrs) == 'table')
+	return {evttype='START', tagname=tagname, attrs=attrs or{}}
 end
 
 -- string -> Evt
 local function TextEvent(text)
-  return {evttype='TEXT', text=text}
+	return {evttype='TEXT', text=text}
 end
 
 -- string -> Evt
 local function EndEvent(tagname)
-  return {evttype='END', tagname=tagname}
+	return {evttype='END', tagname=tagname}
 end
 
 -- string -> Evt

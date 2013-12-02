@@ -40,7 +40,7 @@ local document = H.Document({
   end,
 })
 
-H.prettyPrintDocumentToFile(io.stdout, document)
+H.prettyPrintToFile(io.stdout, document)
 ```
 
 Running this script should print out the following output:
@@ -95,27 +95,27 @@ Note that the first parameter of the `usingHtml` callback must be named `_ENV` a
 
 ###Serializing to a string instead of to a file
 
-If you don want to print the HTML to a file, you can use the `printDocumentToString` functions:
+If you don want to print the HTML to a file, you can use the `printToString` functions:
 
 ```lua
 local document = H.Document({--[[...]]})
-local s1 = H.printDocumentToString(document)
-local s2 = H.prettyPrintDocumentToString(document)
+local s1 = H.printToString(document)
+local s2 = H.prettyPrintToString(document)
 ```
 
 ###Serializing HTML fragments
 
 The document printing functions work with any event stream, not only full documents:
 
-```lua
-H.printDocumentToFile(io.stdout, function()
+```
+H.printToFile(io.stdout, function()
   H.SPAN{"Hello World"}
 end)
-```
+
 
 ##Events
 
-In Lullaby, we create documents by generating a stream of events, instead of constructing a tree-like representation of the DOM. The `printDocument` functions then consume the event stream and convert it into a textual representation of the document.
+In Lullaby, we create documents by generating a stream of events, instead of constructing a tree-like representation of the DOM. The HTML printing functions then consume the event stream and convert it into a textual representation of the document.
 
 There are two main types of events: text events and tag events. Additionally, there is also a "raw HTML" event for those cases when regular text and tag events won do the trick.
 
