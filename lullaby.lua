@@ -106,16 +106,22 @@ local function _Url(scheme, host, path, kw, isabsolute)
 	path = path or {}
 	kw = kw or {}
 	
+	local function url_error(msg)
+		error(U.Exception('BAD_URL', msg))
+	end
+	
 	if scheme then
 		if not escape.is_valid_url_scheme(scheme) then
-			error(string.format("Unrecognized scheme %q", tostring(scheme)))
+			url_error(string.format("Unrecognized scheme %q", tostring(scheme)))
 		end
-		assert(host)
+		if not host then
+			url_error("Host must be present if scheme is present")
+		end
 	end
 	
 	if host then
 		if not escape.is_valid_url_host(host) then
-			error(string.format("Bad characters in host %q", host))
+			url_error("Bad characters in host %q", host)
 		end
 		assert(isabsolute)
 	end
@@ -134,7 +140,9 @@ local function _Url(scheme, host, path, kw, isabsolute)
 	end
 	
 	if not isabsolute then
-		assert(#path > 0 or #params > 0 or hash)
+		if #path == 0 and #params == 0 and not hash then
+			url_error("Empty relative Url")
+		end
 	end
 	
 	return setmetatable({
@@ -201,13 +209,15 @@ local function RelUrl(args)
 	return _Url(nil, nil, args[1], args, false)
 end
 
--- Help detect missing function wrappers:
+-- Detect missing function wrappers:
 -- SPAN{B{"x"}} would convert to <b>x</b><span></span>
 -- (not what we want!)
 local YIELDER_RETURN = {'yielder_return'}
 
 local function YieldText(text)
-	assert(type(text) == 'string')
+	if type(text) ~= 'string' then
+		error(U.Exception('TYPE_ERROR', "expected string"), 2)
+	end
 	sax.EmitTextEvent(text)
 	return YIELDER_RETURN
 end
@@ -215,7 +225,9 @@ end
 --I'm shoehorning Raw HTML under a text event to avoid having to
 -- modify the SAX infrastructure.
 local function YieldHtml(html)
-	assert(type(html) == 'string')
+	if type(html) ~= 'string' then
+		error(U.Exception('TYPE_ERROR', "expected string"), 2)
+	end
 	sax.EmitTextEvent(Raw(html))
 	return YIELDER_RETURN
 end
@@ -224,21 +236,31 @@ local function YieldElement(elemname, attrs, body)
 	
 	-- Check element contents
 	local elem = ElemMap[elemname:lower()]
+	
 	if elem.kind == 'Normal' then
 		--everything is allowed
+		
 	elseif elem.kind == 'Void' then
 		if type(body) ~= 'nil' then
 			error(U.Exception('BAD_VOID_CONTENT',
 				string.format("Void element %s should not have contents", elem.name)))
 		end
+		
 	elseif elem.kind == 'Raw' then
-		assert((isRawType(body)))
-		local bodystr = body.value
-		if string.find(bodystr, '</', 1, true) then
-			-- Technically, we could allow "</" when its not followed by the corresponding tag name
-			-- (case-insensitively). However, I would rather be more strict just in case.
-			error(string.format("Close tag in raw context for %s", elem.name))
+		if body ~= nil then			
+			if not isRawType(body) then
+				error(U.Exception('UNSAFE_STRING',
+					string.format("%s expects raw content", elem.name)))
+			end
+			local bodystr = body.value
+			if string.find(bodystr, '</', 1, true) then
+				-- Technically, we could allow "</" when its not followed by the corresponding tag name
+				-- (case-insensitively). However, I would rather be more strict just in case.
+				error(U.Exception('UNESCAPABLE_CLOSE_TAG',
+					string.format("Close tag in raw content for %s element", elem.name)))
+			end
 		end
+		
 	else
 		error('impossible')
 	end
@@ -251,33 +273,44 @@ local function YieldElement(elemname, attrs, body)
 			
 			local attr = AttrMap[attrname:lower()]
 			if not attr then
-				error(string.format("Unknown attribute %q", attrname))
+				error(U.Exception('FORBIDDEN_ATTRIBUTE', string.format("Unknown attribute %q", attrname)))
 			end
 			if not attr.allowed_on[elem.name] then
-				error(string.format("Attribute %q not allowed on tag %q", attrname, elem.name))
+				error(U.Exception('FORBIDDEN_ATTRIBUTE',
+					string.format("Attribute %q not allowed on tag %q", attrname, elem.name)))
 			end
 		
+			
+			local function check_type(received, expected, ename)
+				local ok
+				if type(expected) == 'string' then
+					ename = expected
+					ok = (type(received) == expected)
+				elseif type(expected) == 'function' then
+					ok = expected(received)
+				else
+					error('impossible')
+				end
+				if not ok then
+					error(U.Exception('TYPE_ERROR',
+						string.format("Attribute %q received a %s; expected %s", attrname, type(received), ename)))
+				end
+			end
+			
 			if attr.kind == 'Text' then
-				if type(attrvalue) ~= 'string' then
-					error(string.format("Attribute %q received a %s; expected string", attrname, type(attrvalue)))
-				end
+				check_type(attrvalue, 'string')
 			elseif attr.kind == 'Enum' then
-				if type(attrvalue) ~= 'string' then
-					error(string.format("Attribute %q received a %s; expected string", attrname, type(attrvalue)))
-				end
+				check_type(attrvalue, 'string')
 				if not attr.allowed_values[attrvalue] then
-					error(string.format("Attribute %q does not allow value %q", attrname, tostring(attrvalue)))
+					error(U.Exception('TYPE_ERROR',
+						string.format("Attribute %q does not allow value %q", attrname, tostring(attrvalue))))
 				end
 			elseif attr.kind == 'Boolean' then
-				if type(attrvalue) ~= 'boolean' then
-					error(string.format("Attribute %q received a %s; expected boolean", attrname, type(attrvalue)))
-				end
+				check_type(attrvalue, 'boolean')
 			elseif attr.kind == 'URL' then
-				if not isUrlType(attrvalue) then
-					error(string.format("Attribute %q expected an URL or Raw value", attrname))
-				end
+				check_type(attrvalue, isUrlType, 'Url')
 			elseif attr.kind == 'Raw' then
-				error(string.format("Attribute %q is unsafe and expects Raw values", attrname))
+				check_type(attrvalue, isRawType, 'Raw')
 			else
 				error('impossible')
 			end
@@ -296,8 +329,10 @@ local function YieldElement(elemname, attrs, body)
 		YieldText(body)
 	elseif type(body) == 'function' then
 		body()
+	elseif isRawType(body) then
+		YieldHtml(tostring(body))
 	else
-		error("bad type")
+		error(U.Exception('TYPE_ERROR', string.format("Tag body has type %s", type(body))))
 	end
 	
 	sax.EmitEndEvent(elem.name)
@@ -322,7 +357,9 @@ H.Raw = Raw
 -- usage: TAGNAME{ attr=value, body }
 for _, elem in pairs(ElemMap) do
 	H[elem.name:upper()] = function(args)
-		assert(type(args) == 'table')
+		if type(args) ~= 'table' then
+			error(U.Exception('TYPE_ERROR', "Element constructor should receive a table parameter"))
+		end
 		local body = args[1]
 		local attrs = tableToPairs(args)
 		return YieldElement(elem.name, attrs, body)
