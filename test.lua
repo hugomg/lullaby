@@ -1,5 +1,11 @@
--- To run: 
+-- To run:
 --   busted test.lua
+-- You can install busted with Luarocks
+
+
+-- Check if we are running in the Lua versions we want to:
+print("LUA = ".._VERSION)
+print("JIT = "..(jit and jit.version or 'no'))
 
 describe("SAX", function()
 	
@@ -7,7 +13,7 @@ describe("SAX", function()
 	local yield = coroutine.yield
 		
 	it("Should print DOM", function()
-		local stream = sax.from_coro(function()
+    local stream = sax.from_coro(function()
 			yield(sax.StartEvent('a', {}))
 			for i=1,3 do
 				yield(sax.StartEvent('b', {{'x', 'xv'}}))
