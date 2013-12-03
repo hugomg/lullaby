@@ -75,13 +75,4 @@ do
 	end
 end
 
- --Exceptions with separate tag and message so people catching the exception
--- don't need do repeat the whole message.
-local ExceptionMt = {
-	__tostring = function(self) return self.message end,
-}
-M.Exception = function(tag, msg)
-	return setmetatable({tag=tag, msg=msg}, ExceptionMt)
-end
-
 return M

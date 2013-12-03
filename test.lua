@@ -56,20 +56,8 @@ describe("Lullaby", function()
 		assert.are_same(expected, dotest(false, body))
 	end
 	
-	local function assert_error(expected, body)
-		local ok, err = pcall(function() dotest(false, body) end)
-		if ok then
-			error("Error not thrown", 2)
-		end
-		if type(err) == 'table' then
-			if expected.tag ~= err.tag then
-				error(string.format("Expexted %s exception tag, got %s", tostring(expected.tag), tostring(err.tag)), 2)
-			end
-		else
-			if expected ~= err then
-				error(string.format("Expexted %s error message, got %s", tostring(expected), tostring(err)), 2)
-			end
-		end
+	local function assert_error(errmsg, body)
+		assert.has_error(function() dotest(false, body) end, errmsg)
 	end
 	
 	it("Text escaping", function()
@@ -103,11 +91,11 @@ describe("Lullaby", function()
 				function(_ENV) BR{} end)
 		end)
 		it("text content", function()
-			assert_error({tag='BAD_VOID_CONTENT'},
+			assert_error("Void element br should not have contents",
 				function(_ENV) BR{"Hello"} end)
 		end)
 		it("html content", function()
-			assert_error({tag='BAD_VOID_CONTENT'},
+			assert_error("Void element br should not have contents",
 				function(_ENV) BR{function() end} end)
 		end)
 	end)
@@ -118,22 +106,22 @@ describe("Lullaby", function()
 				function(_ENV) SCRIPT{Raw"window.x=(1<2) && 3 > 4;"} end)
 		end)
 		it("should be raw", function()
-			assert_error({tag='UNSAFE_STRING'},
+			assert_error("script expects raw content",
 				function(_ENV) SCRIPT{"x"} end)
 		end)
 		it("forbids close tag", function()
-			assert_error({tag='UNESCAPABLE_CLOSE_TAG'},
+			assert_error("Close tag in raw content for script element",
 				function(_ENV) SCRIPT{Raw"pattern = /</"} end)
 		end)
 	end)
 
 	it("Should forbid unwrapped child tags", function()
-		assert_error({tag="MISSING_TAG_WRAPPER"}, 
+		assert_error("Missing function wrapper in element body", 
 			function(_ENV) SPAN{STRONG{}} end)
 	end)
 
-	it("Should expect a table argumen", function()
-		assert_error({tag='TYPE_ERROR'},
+	it("Should expect a table argument", function()
+		assert_error("Element constructor should receive a table parameter",
 			function(_ENV) SPAN("hello") end)
 	end)
 
@@ -143,37 +131,46 @@ describe("Lullaby", function()
 				function(_ENV) DIV{ ID="asd" } end)
 		end)
 		it("should detect unknown attributes", function()
-			assert_error({tag='FORBIDDEN_ATTRIBUTE'},
+			assert_error("Unknown attribute \"blablabla\"",
 				function(_ENV) DIV{ blablabla="foo" } end)
 		end)
 		it("should detect misplaced attributes", function()
-			assert_error({tag='FORBIDDEN_ATTRIBUTE'},
+			assert_error("Attribute \"disabled\" not allowed on tag \"div\"",
 				function(_ENV) DIV{ disabled=true } end)
 		end)
 	
 		describe("Types", function()
 			it("text", function()
-				assert_html([[<div id="asd"></div>]], function(_ENV) DIV{ id="asd" } end)
-				assert_error({tag='TYPE_ERROR'},      function(_ENV) DIV{ id=true } end)
+				assert_html([[<div id="asd"></div>]],
+					function(_ENV) DIV{ id="asd" } end)
+				assert_error("Attribute \"id\" received a boolean; expected string",
+					function(_ENV) DIV{ id=true } end)
 			end)
 			it("enum", function()
-				assert_html([[<form method="POST"></form>]], function(_ENV) FORM{ method="POST" } end)
-				assert_error({tag='TYPE_ERROR'},             function(_ENV) FORM{ method="asd" } end)
+				assert_html([[<form method="POST"></form>]],
+					function(_ENV) FORM{ method="POST" } end)
+				assert_error("Attribute \"method\" does not allow value \"asd\"",
+					function(_ENV) FORM{ method="asd" } end)
 			end)
 			it("bool", function()
-				assert_html([[<button disabled></button>]], function(_ENV) BUTTON{ disabled=true } end)
-				assert_html([[<button></button>]], function(_ENV) BUTTON{ disabled=false } end)
-				assert_error({tag='TYPE_ERROR'},            function(_ENV) BUTTON{ disabled="true" } end)
+				assert_html([[<button disabled></button>]],
+					function(_ENV) BUTTON{ disabled=true } end)
+				assert_html([[<button></button>]],
+					function(_ENV) BUTTON{ disabled=false } end)
+				assert_error("Attribute \"disabled\" received a string; expected boolean",
+					function(_ENV) BUTTON{ disabled="true" } end)
 			end)
 			it("URL", function()
 				assert_html([[<a href="http://www.example.com/">x</a>]],
 					function(_ENV) A{ href=AbsUrl{'http', 'www.example.com'}, "x"} end)
-				assert_error({tag='TYPE_ERROR'},
+				assert_error("Attribute \"href\" received a string; expected Url",
 					function(_ENV) A{ href="www.example.com" } end)
 			end)
 			it("Raw", function()
-				assert_html([[<div onclick="alert('hi')"></div>]], function(_ENV) DIV{ onclick=Raw"alert('hi')" } end)
-				assert_error({tag='TYPE_ERROR'},                   function(_ENV) DIV{ onclick="alert('hi')" } end)
+				assert_html([[<div onclick="alert('hi')"></div>]],
+					function(_ENV) DIV{ onclick=Raw"alert('hi')" } end)
+				assert_error("Attribute \"onclick\" received a string; expected Raw",
+					function(_ENV) DIV{ onclick="alert('hi')" } end)
 			end)
 		end)
 	end)
@@ -213,15 +210,23 @@ describe("Lullaby", function()
 				H.RelUrl{nil, hash="Chen"})
 		end)
 	
-		local function url_error(ctor, args )
-			assert_error({tag='BAD_URL'}, function(_ENV) A{href=ctor(args)} end)
+		local function url_error(err, ctor, args)
+			assert_error(err, function(_ENV) A{href=ctor(args)} end)
 		end
 		
 		describe("Errors", function()
-			it("bad scheme", function() url_error(H.AbsUrl, {'zzzz', 'www.example.com'}) end)
-			it("missing host", function() url_error(H.AbsUrl, {'http', nil}) end)
-			it("slash in hostname", function() url_error(H.AbsUrl, {'http', 'www.foo.com/bar'}) end)
-			it("empty relative url", function() url_error(H.RelUrl, {}) end)
+			it("bad scheme", function()
+				url_error("Unrecognized scheme \"zzzz\"", H.AbsUrl, {'zzzz', 'www.example.com'})
+			end)
+			it("missing host", function() 
+				url_error("Host must be present if scheme is present", H.AbsUrl, {'http', nil})
+			end)
+			it("slash in hostname", function()
+				url_error("Bad characters in host \"www.foo.com/bar\"", H.AbsUrl, {'http', 'www.foo.com/bar'})
+			end)
+			it("empty relative url", function()
+				url_error("Empty relative Url", H.RelUrl, {})
+			end)
 		end)
 			
 	end)
