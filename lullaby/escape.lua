@@ -11,22 +11,22 @@ local Exports = {}
 --======
 
 local function escaper(pattern, substitution)
-	return function(str)
-		return (string.gsub(str, pattern, substitution))
-	end
+  return function(str)
+    return (string.gsub(str, pattern, substitution))
+  end
 end
 
 local function matcher(pattern)
-	return function(str)
-		return nil ~= string.match(str, pattern)
-	end
+  return function(str)
+    return nil ~= string.match(str, pattern)
+  end
 end
 
 local function enum_checker(values)
-	local set = U.Set(values)
-	return function(x)
-		return nil ~= set[x]
-	end
+  local set = U.Set(values)
+  return function(x)
+    return nil ~= set[x]
+  end
 end
 
 --======
@@ -34,16 +34,16 @@ end
 --======
 
 local named_xml_entities = {
-	['&'] = "&amp;",
+  ['&'] = "&amp;",
   ['<'] = "&lt;",
   ['>'] = "&gt;",
   ['\"'] = "&quot;",
-	-- `&apos;` not included because its not on the HTML4 standard and won't work in IE8.
+  -- `&apos;` not included because its not on the HTML4 standard and won't work in IE8.
 }
 
 local function xml_entity_escape(c)
-	assert(#c == 1)
-	return named_xml_entities[c] or string.format("&#x%02X;", string.byte(c))
+  assert(#c == 1)
+  return named_xml_entities[c] or string.format("&#x%02X;", string.byte(c))
 end
 
 -- For XML, we escape all named entities, just to be safe.
@@ -69,8 +69,8 @@ Exports.html_any_quoted_attribute    = escaper('[&\'\"]', xml_entity_escape)
 -- See http://url.spec.whatwg.org/
 
 local function url_encode(c)
-	assert(#c == 1)
-	return string.format("%%%02X", string.byte(c))
+  assert(#c == 1)
+  return string.format("%%%02X", string.byte(c))
 end
 
 -- A scheme must be one ASCII alpha, followed by zero or more of ASCII alphanumeric, "+", "-", and "."
@@ -92,8 +92,8 @@ Exports.url_path  = escaper('[^%w-_.]', url_encode)
 --======
 
 local function js_string_encode(c)
-	assert(#c == 1)
-	return string.format("\\x%02X", string.byte(c))
+  assert(#c == 1)
+  return string.format("\\x%02X", string.byte(c))
 end
 
 Exports.js_string = escaper('[%w]', js_string_encode)
@@ -106,17 +106,17 @@ return Exports
 
 [Ambiguous Ampersand]
   HTML allows unescaped umpersand as long as they are not followed by characters that form
-	a named character reference. (So "Me & You" contains a raw ampersand). However, its much
-	simpler for use to just escape all ampersands.
+  a named character reference. (So "Me & You" contains a raw ampersand). However, its much
+  simpler for use to just escape all ampersands.
 
 [Unquoted Attributes]
   For unquoted attributes we would need to escape aggressively since many things
   (such as [ %*+,-/;<=>^|] and maybe more) can break out of the attribute.
-	Unquoted attributes aren very useful if we are generating the code though so I left it out.
+  Unquoted attributes aren very useful if we are generating the code though so I left it out.
   --Exports.html_unquoted_attribute      = escaper('[^%w]'  , xml_entity_escape)
 
 [Javascript]
   If an event handler is properly quoted, breaking out requires the corresponding quote.
-	However, we also need to worry about closing "</script>" tags and newlines inside the JS strings.
-	
+  However, we also need to worry about closing "</script>" tags and newlines inside the JS strings.
+  
 --]==]
