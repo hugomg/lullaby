@@ -125,6 +125,11 @@ describe("Lullaby", function()
       function(_ENV) SPAN("hello") end)
   end)
 
+  it("Should expect a table argument", function()
+    assert_error("Multiple element body parameters",
+      function(_ENV) SPAN{"hello", "world"} end)
+  end)
+
   describe("Attributes", function()
     it("should be case insensitive", function()
       assert_html([[<div ID="asd"></div>]],

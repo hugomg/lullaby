@@ -348,6 +348,9 @@ for _, elem in pairs(ElemMap) do
     if type(args) ~= 'table' then
       error("Element constructor should receive a table parameter")
     end
+    if #args > 1 then
+      error("Multiple element body parameters")
+    end
     local body = args[1]
     local attrs = tableToPairs(args)
     return YieldElement(elem.name, attrs, body)
