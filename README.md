@@ -1,7 +1,7 @@
 Lullaby HTML templates
 ======================
 
-Lullaby is a stream-based, Turing-complete HTML template library that helps you write complex documents using familiar Lua constructs instead of a brand new templating language. Its a bit similar to Ruby's [Markaby](https://github.com/markaby/markaby), Perl's [Template::Declare](http://search.cpan.org/~alexmv/Template-Declare-0.46/lib/Template/Declare.pm) and Haskell's [Blaze](http://jaspervdj.be/blaze/).
+Lullaby is a stream-based, Turing-complete HTML template library that helps you write complex documents using familiar Lua constructs instead of a brand new templating language. It is a bit similar to Ruby's [Markaby](https://github.com/markaby/markaby), Perl's [Template::Declare](http://search.cpan.org/~alexmv/Template-Declare-0.46/lib/Template/Declare.pm) and Haskell's [Blaze](http://jaspervdj.be/blaze/).
 
 Lullaby is written in pure Lua and should be compatible with Lua versions 5.1 and 5.2
 
@@ -16,7 +16,7 @@ Lullaby is written in pure Lua and should be compatible with Lua versions 5.1 an
 
 ##Instalation
 
-Download the source code for this repository and run the following command from inside the main directory:
+The easiest way to install this project is using [Luarocks](http://luarocks.org/). Download the source code for this repository and run the following command from inside the main directory:
 
 ```bash
 luarocks make
@@ -28,9 +28,13 @@ Or, if you want to install locally to just your user:
 luarocks make --local
 ```
 
+If Lua still can find Lullaby when you attempt to require it, then you might need to configure your LUA_PATH environment variable.
+
+Installation via Luarocks rock will be available as soon as I manage to get it to work.
+
 ##Quick Start
 
-Here is how we can create a small HTML document using Lullaby:
+Here is a short we can use Lullaby to create a small HTML document and print it to standard output:
 
 ```lua
 local H = require 'lullaby'
@@ -45,6 +49,11 @@ local document = H.Document({
     H.DIV{class="foo", function()
       H.Text("Hello ")
       H.BUTTON{disabled = true, "World"}
+      H.OL{function()
+        for i=1, 3 do
+          H.LI{tostring(i)}
+        end
+      end}
     end}
   end,
 })
@@ -52,7 +61,9 @@ local document = H.Document({
 H.prettyPrintToFile(io.stdout, document)
 ```
 
-Running this script should print out the following output:
+Lullaby represents document fragments as functions that call markup-generating functions such as `Text` or `DIV`. `Document` is a higher-level template that builds the full document given the document fragments for the head and body tags. Finally, we use one of the printing functions to serialize the full document to a file - `printToFile` serializes everything in a single line without indentation and `prettyPrintToFile` includes some extra indentation whitespace.
+
+Running the example script should generate the following output. Don't worry about the `>`s being on a different line as the corresponding `<`s - byputting the indentation whitespace inside the tags instead of between them we make it so that when the browser parses the document the result is the same as if we had serialized it using `printToFile`.
 
 ```html
 <!DOCTYPE html>
@@ -68,17 +79,25 @@ Running this script should print out the following output:
     ><div class="foo"
       >Hello <button disabled
         >World</button
+      ><ol
+        ><li
+          >1</li
+        ><li
+          >2</li
+        ><li
+          >3</li
+        ></ol
       ></div
     ></body
   ></html
 >
 ```
 
-The `>`s appearing on a separate line from the `<`s might seem strange at first. The reason we do it this way is because that makes all the indentation whitespace stay inside the open and close tags. This means that the indentation whitespace gets fully ignored and does *not* get converted to text nodes when the browser converts our document into a DOM tree.
-
 ###Avoiding the library prefix
 
 Typing the `H.` prefix over and over can be tiresome. To help with that, you can use the `usingHTML` function to create a local environment where all the names from the Lullaby namespace are automatically available.
+
+**For brevity, all examples in this README from this point on will omit the `H.` namespace**
 
 ```lua
 local H = require 'lullaby'
@@ -98,16 +117,18 @@ local document = H.usingHtml(function(_ENV)
     end,
   })
 end)
+
+H.prettyPrintToFile(io.stdout, document)
 ```
 
-Note that the first parameter of the `usingHtml` callback must be named `_ENV` and that, due to the way `usingHtml` is implemented it is forbidden to write to global variabes inside the `usingHtml` block (you can still read from globals though).
+For compatibility between Lua 5.1 and 5.2, the argument to `usingHtml` must be an anonymous function expression with a single argument, named `_ENV`. Additionally, due to the way `usingHtml` is implemented, it is not possible to write to global variables inside the `usingHtml` block (you can still read from globals though).
 
 ###Serializing to a string instead of to a file
 
-If you don't want to print the HTML to a file, you can use the `printToString` functions:
+If you don't want to print the HTML to a file, you can use the `printToString` functions to serialize the documents into Lua strings:
 
 ```lua
-local document = H.Document({--[[...]]})
+local document = H.Document({ })
 local s1 = H.printToString(document)
 local s2 = H.prettyPrintToString(document)
 ```
@@ -124,13 +145,24 @@ end)
 
 ##Events
 
-In Lullaby, we create documents by generating a stream of events, instead of constructing a tree-like representation of the DOM. The HTML printing functions then consume the event stream and convert it into a textual representation of the document.
+Lullaby uses an event-based document construction mechanism. Instead of building a full document tree, we create a stream of "open tag", "text", and "close tag" events by calling the appropriate event-generating functions. The main advantage of this approach is that it composes well with existing Lua structuring features: if statements give us conditional templates, for loops give template iteration and functions let us abstract and call subtemplates.
 
-There are two main types of events: text events and tag events. Additionally, there is also a "raw HTML" event for those cases when regular text and tag events won do the trick.
+```lua
+local ordered_list = function(items)
+  OL{function()
+    for i, item in ipairs(items) do
+      local cls = (i % 2 == 0 and "even" or "odd")
+      LI{class=cls, item}
+    end
+  end}
+end
+```
+
+There are two main types of events: text events and tag events. Additionally, there is also a "raw HTML" event for those cases when regular text and tag events won't do the trick.
 
 ### Text events
 
-Use the `H.Text` function to write some text to the document:
+Use the `Text` function to write some text to the document:
 
 ```lua
 Text("text goes here")
@@ -138,11 +170,13 @@ Text("text goes here")
 
 ### Tag events
 
-The functions to create HTML tags have the same name as the corresponding tag, but in upper case. For example, to create a `span` tag we use the `H.SPAN` function:
+The functions to create HTML tags have the same name as the corresponding tag, but in upper case. For example, to create a `span` tag we use the `SPAN` function:
 
 ```lua
 SPAN{ "contents" }
 ```
+
+Lullaby should have functions for all tags in the HTML 5 specification. For a full list, see the lullaby/html_data.lua file.
 
 The tag creation functions all receive a table as their sole argument. Attributes are encoded as key-value pairs with string keys and the contents of the tag go on field `1` of the array part of the table:
 
@@ -154,33 +188,27 @@ Tag contents can either be `nil` (empty tag), a `string` (text contents) or a `f
 
 ```lua
 
--- No contents:
+-- <div></div>
 DIV{}
 
---Text contents:
+-- <strong>hello world</strong>
 STRONG{ "hello world" } 
 
---HTML contents:
+-- <div>Hello <strong>World</string></div>
 DIV{function()
   Text("Hello ")
   STRONG("World")
 end)
 ```
 
-```html
-<div></div>
-
-<strong>hello world</strong>
-
-<div>Hello <strong>World</string></div>
-```
-
-Its important to note that to create nested tags the content parameter for the outer tag must be a function. You must not directly pass the return value for the inner tag constructor as you would do in a DOM representation of the document
+It is important to note that to create nested tags the content parameter for the outer tag must be a function. You must not directly pass the return value for the inner tag constructor as you would do in a DOM representation of the document
 
 ```lua
 -- Do not do this. It will raise an error:
 DIV{ STRONG{"Hello"} }
 ```
+
+The reason for this is that function arguments are evaluated before the function is called so the events for the `strong` tag would be emmited before the `div` events instead of between them.
 
 ###Raw HTML
 
@@ -190,7 +218,7 @@ In cases where Lullaby cannot generate the HTML you are looking for, you can fal
 --HTML comments:
 RawHtml([[<!-- this is a comment -->]])
 
---Custom tags not in the HTML5 spec
+--Custom tags not present in the HTML5 spec
 RawHtml([[<fb:like href="myurl" />]])
 ```
 
@@ -200,19 +228,21 @@ For void elements, such as `img` or `br`, the only allowed value for the content
 
 For the `script` and `style` elements, the content parameter must be a [`Raw`](#raw-text) string. The reason for this is that these elements contain executable Javascript and CSS code instead of regular entity-encodable text.
 
-Otherwise, an element is considered "Normal" and its allowed to contain anything.
+Otherwise, an element is considered "Normal" and it is allowed to contain anything.
 
 Lullaby does not attempt to detect nesting restrictions in HTML (for example, `div` is not allowed inside `p`). For these, you should use a separate HTML validator.
 
-Additionally, Lullaby does not support foreign elements, such as MathML and SVG. 
+Additionally, Lullaby does not support foreign elements, such as MathML and SVG (you can still use the RawHtml feature for those though). 
 
 ##Attribute Types
 
-To help detect errors and avoid [Cross Site Scripting](https://en.wikipedia.org/wiki/Cross-site_scripting) vulnerabilities, not every HTML attribute in Lullaby is allowed to receive arbitrary string values. Attributes are classified in the followed categories:
+To help detect errors and avoid [Cross Site Scripting](https://en.wikipedia.org/wiki/Cross-site_scripting) vulnerabilities, Lullaby classifies attributes according to what values they are allowed to receive. The 5 categories are Text, Raw, Enumerated, Boolean and URL:
+
+Lullaby should be aware of all attributes in the HTML5 specification. For a full list of attributes, including their category and what elements they are allowed on, see the lullaby/html_data.lua file.
 
 ###Text attributes
 
-These are safe attributes that can receive user-supplied values without anything too bad happening. Lullaby represents their values with regular Lua strings.
+These are safe attributes that can receive user-supplied values without anything too bad happening. Lullaby expects their values to be a Lua string.
 
 Examples: `id`, `class`, `title`, `data-XXX` attributes
 
@@ -222,6 +252,28 @@ DIV{class="comment"}
 
 ```html
 <div class="comment"></div>
+```
+
+###Raw text
+
+Some attributes cannot safely receive user-supplied values. In these cases, Lullaby requires that their values be wrapped in a `Raw` datatype, so that the programmer can demonstrate that he is aware that the attribute is potentially unsafe and should not be receiving user-supplied values without the proper precautions.
+
+Examples: `style`, `media`, Javascript event handlers (`onclick`, etc).
+
+```lua
+DIV{onclick=Raw'alert("Hello")', "click me"}
+```
+
+```html
+<div onclick="alert(&quot;Hello&quot;)">click me</div>
+```
+
+Additionally, the `Raw` datatype can be used to bypass Lullaby's attribute value restrictions and to insert custom attributes or to put attributes in elements they are not allowed on.
+
+```lua
+DIV{ contenteditable=Raw"asdasdasd" }
+BUTTON{ disabled=Raw"disabled" }
+DIV{ mycustomattribute=Raw"value" }
 ```
 
 ###Enumerated attributes
@@ -259,17 +311,19 @@ BUTTON{disabled=false, "two"}
 
 ###URLs
 
-URLs are complex values and its easy to fall into a trap if we try to build large URLs using string concatenation. Because of this, Lullaby represents URLs with a special data type and all URL attributes expect to receive a value of this data type.
+Since URLs are complex values with a nontrivial syntax, Lullaby considers URL attributes to be unsafe and does not allow you to simply pass them as strings. That said, the simplest way to give a value for an URL attribute is via the Raw datatype:
 
 ```lua
--- Full URLs consist of a
---  protocol (ex.:http)
---  host (ex.: www.example.com)
---  path (ex.: posts/january/post1.html)
---  query string (ex.: ?a=b&c=d)
---  hash fragment (ex.: "#FirstSection"
--- http://www.example.com/posts/january/post1.html?a=b&c=d#FirstSection
+A{href=Raw"www.example.com"}
+```
 
+However, if the URL is not fixed and needs to be built up from smaller parts then the `Raw` approach becomes less appealing, given that we would need to manually escape the appropriate parameters. For these situations, Lullaby provides the `AbsUrl` and `RelUrl` for absolute and relative URLs, respectively.
+
+First some terminology: URLs can be subdivided into the scheme (ex.: http), host (ex.: www.example.com), file path (ex.: foo/bar.html), query string (ex.: ?t=10m) and hash fragment (ex.: #section-name)
+
+The `AbsUrl` constructor receives a scheme, host and path as positional parameters and the query string and hash as named parameters. The scheme, host and hash parameters are strings, the path is a list of strings representing the path segments and the query is table of key-value pairs. 
+
+```lua
 -- Paths are represented as an array of path segments:
 A{"absolute link", href=AbsUrl{'http', 'www.example.com', {'posts', 'post1.html'}}
 --   http://www.example.com/posts/post1.html
@@ -277,47 +331,24 @@ A{"absolute link", href=AbsUrl{'http', 'www.example.com', {'posts', 'post1.html'
 -- Query parameters go on the `params`  field; The hash goes on the `hash` field
 A{"query params", href=AbsUrl{'http', 'www.example.com', params={a="b", c="d"}, hash="x2"}
 --   http://www.example.com/?a=b&c=d#x2
+```
 
--- The scheme and host parameters are optional:
-A{"scheme-relative", href=AbsUrl{nil, 'www.example.com', {index.html'}}
---   //www.example.com/index.html
-A{"absolute-path", href=AbsUrl{nil, nil, {'index.html'}}
+All the parameters are optional:
+
+```lua
+-- scheme relative urls:
+A{href=AbsUrl{nil, 'www.example.com', {index.html'}}
+-- absolute paths relative to the root
+A{href=AbsUrl{nil, nil, {'index.html'}}
 --   /index.html
+```
 
--- For relative URLs, use the RelUrl constructor. It receives the same arguments as
--- the AbsUrl constructor, except for the scheme and host:
-A{"relative", href=RelUrl{{'posts/post2.html'}}}
+The `RelUrl` receives the same constructors as `AbsUrl`, except for the scheme and host.
+
+```lua
+--- Relative Urls are relative to the current path
+A{href=RelUrl{{'posts','post2.html'}}}
 --   posts/post2.html
-```
-
-As an alternative to using URL objects, its also possible to pass `Raw` URL values, as described in the following section.
-
-###Raw text
-
-Some attributes cannot safely receive user-supplied values. In this case, Lullaby requires that their values be wrapped in a `Raw` datatype, so that the programmer can demonstrate that he is aware that the attribute is potentially unsafe and should not be receiving user-supplied values without the proper precautions.
-
-Examples: `style`, `media`, Javascript event handlers (`onclick`, etc).
-
-```lua
-DIV{onclick=Raw'alert("Hello")', "click me"}
-```
-
-```html
-<div onclick="alert(&quot;Hello&quot;)">click me</div>
-```
-
-Additionally, `Raw` can be used to override other attribute values restrictions
-
-```lua
-DIV{ contenteditable=Raw"asdasdasd" }
-A{ href=Raw'http://www.example.com' }
-BUTTON{ disabled=Raw"disabled" }
-```
-
-and to insert custom attributes not in the HTML5 spec
-
-```lua
-DIV{ mycustomattribute=Raw"value" }
 ```
 
 ##Document
@@ -362,6 +393,6 @@ First, the pros:
 
 And now the biggest cons:
 
-* Lullaby is fairly verbose. Its better suited for documents with lots of tags and little raw text and where you need to do lots of iteration or conditionals. If all you need is to insert a couple of values into a big document with lots of text then all those anonymous functions for the nested tags start becoming a lot of noise.
+* Lullaby is fairly verbose. It is better suited for documents with lots of tags and little raw text and where you need to do lots of iteration or conditionals. If all you need is to insert a couple of values into a big document with lots of text then all those anonymous functions for the nested tags start becoming a lot of noise.
 
-* Lullaby does not attempt to enforce a strict model-view separation, as [Cosmo](http://cosmo.luaforge.net/), [Mustache](http://mustache.github.io/) or [StringTemplate](http://www.stringtemplate.org/) attempt to. Its your responsibility as the programmer to keep the business logic out of your Lullaby templates or they could easily become an unmaintainable mess.
+* Lullaby does not attempt to enforce a strict model-view separation, as [Cosmo](http://cosmo.luaforge.net/), [Mustache](http://mustache.github.io/) or [StringTemplate](http://www.stringtemplate.org/) attempt to. It is your responsibility as the programmer to keep the business logic out of your Lullaby templates or they could easily become an unmaintainable mess.
