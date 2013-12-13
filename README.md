@@ -1,9 +1,27 @@
 Lullaby HTML templates
 ======================
 
-Lullaby is a stream-based, Turing-complete HTML template library that helps you write complex documents using familiar Lua constructs instead of a brand new templating language. It is a bit similar to Ruby's [Markaby](https://github.com/markaby/markaby), Perl's [Template::Declare](http://search.cpan.org/~alexmv/Template-Declare-0.46/lib/Template/Declare.pm) and Haskell's [Blaze](http://jaspervdj.be/blaze/).
+Lullaby is a stream-based HTML template library for Lua 5.1 or 5.2. Unlike general text-based templating engines, it is HTML5-aware and it is implemented as a regular Lua library instead of defining a custom string-interpolation language. Lullaby is a bit similar to Ruby's [Markaby](https://github.com/markaby/markaby), Perl's [Template::Declare](http://search.cpan.org/~alexmv/Template-Declare-0.46/lib/Template/Declare.pm) and Haskell's [Blaze](http://jaspervdj.be/blaze/), but with a bit more emphasis in detecting unsafe HTML (user input in event handlers, etc).
 
-Lullaby is written in pure Lua and should be compatible with Lua versions 5.1 and 5.2
+##Pros and cons of Lullaby
+
+There are many libraries out there for generating HTML. Why should I use Lullaby over them?
+
+First, the pros:
+
+* Using regular Lua code for things like conditionals, iteration, subtemplates and table access means that there is no need to learn a separate templating DSL.
+
+* Lullaby is aware that it is generating HTML:
+  * It knows what are the valid tag and attribute names as well as what kinds of values they expect.
+  * It automatically adds close-tags in the appropriate spaces, if needed. Lullaby also knows what HTML elements are void and have no closing tags (it doesn't just prettend that everything is XML and use invalid "/>" tags).
+  * It does not insert significant indentation whitespace that would be in the document.
+  * It uses context-dependent escaping instead of using the same escaping algorithm for everything. Lullaby tells apart element contents, attribute values and URL parameters and also knows what places cannot escape their contents and should not receive uncontrolled used input.
+
+And now the biggest cons:
+
+* Lullaby is fairly verbose. It is better suited for documents with lots of tags and little raw text and where you need to do lots of iteration or conditionals.
+
+* Lullaby does not attempt to enforce a strict model-view separation, as [Cosmo](http://cosmo.luaforge.net/), [Mustache](http://mustache.github.io/) or [StringTemplate](http://www.stringtemplate.org/) attempt to. It is your responsibility as the programmer to keep the business logic out of your Lullaby templates or they could easily become an unmaintainable mess.
 
 ##Contents
 * [Instalation](#instalation)
@@ -22,19 +40,19 @@ The easiest way to install this project is using [Luarocks](http://luarocks.org/
 luarocks make
 ```
 
-Or, if you want to install locally to just your user:
+Or, to install locally without needing admin permissions:
 
 ```bash
 luarocks make --local
 ```
 
-If Lua still can find Lullaby when you attempt to require it, then you might need to configure your LUA_PATH environment variable.
+Note that if you are using a local instalation then you might need to configure the LUA_PATH environment variable or else the Lua interpreter might not find Lullaby when you `require` it.
 
-Installation via Luarocks rock will be available as soon as I manage to get it to work.
+Installation via packaged Luarocks rock will be available as soon as I manage to get it to work.
 
 ##Quick Start
 
-Here is a short we can use Lullaby to create a small HTML document and print it to standard output:
+Here is a short example of how we can use Lullaby to create a small HTML document and print it to standard output:
 
 ```lua
 local H = require 'lullaby'
@@ -63,7 +81,7 @@ H.prettyPrintToFile(io.stdout, document)
 
 Lullaby represents document fragments as functions that call markup-generating functions such as `Text` or `DIV`. `Document` is a higher-level template that builds the full document given the document fragments for the head and body tags. Finally, we use one of the printing functions to serialize the full document to a file - `printToFile` serializes everything in a single line without indentation and `prettyPrintToFile` includes some extra indentation whitespace.
 
-Running the example script should generate the following output. Don't worry about the `>`s being on a different line as the corresponding `<`s - byputting the indentation whitespace inside the tags instead of between them we make it so that when the browser parses the document the result is the same as if we had serialized it using `printToFile`.
+Running the example script should generate the following output. The `>`s on separate lines are not where most people would expect them to be but this way we avoid inserting significant whitespace just for indentation (whitespace inside tags is ignored while whitespace between tags is *not*).
 
 ```html
 <!DOCTYPE html>
@@ -95,7 +113,7 @@ Running the example script should generate the following output. Don't worry abo
 
 ###Avoiding the library prefix
 
-Typing the `H.` prefix over and over can be tiresome. To help with that, you can use the `usingHTML` function to create a local environment where all the names from the Lullaby namespace are automatically available.
+Typing the `H.` prefix over and over can be tiresome and to help with that, Lullaby provides a `usingHTML` function. It creates a local environment where all the names from the Lullaby namespace are automatically available.
 
 **For brevity, all examples in this README from this point on will omit the `H.` namespace**
 
@@ -377,22 +395,3 @@ local document = Document({
   end,
 })
 ```
-
-##Pros and cons of Lullaby
-
-There are many libraries out there for generating HTML. Why should I use Lullaby over them?
-
-First, the pros:
-
-* Using regular Lua code for things like conditionals, iteration, subtemplates and table access means that there is no need to learn a separate templating DSL.
-
-* Lullaby is aware that it is generating HTML:
-  * It can enforce some simple restrictions (correct element names, correct attribute values, matching open and close tags...).
-  * Instead of blindly entity-encoding everything, Lullaby can use appropriate escaping algorithms depending on the context (element text, attribute  values, url parameters, ...)
-  * No significant indentation whitespace cluttering the resulting DOM.
-
-And now the biggest cons:
-
-* Lullaby is fairly verbose. It is better suited for documents with lots of tags and little raw text and where you need to do lots of iteration or conditionals. If all you need is to insert a couple of values into a big document with lots of text then all those anonymous functions for the nested tags start becoming a lot of noise.
-
-* Lullaby does not attempt to enforce a strict model-view separation, as [Cosmo](http://cosmo.luaforge.net/), [Mustache](http://mustache.github.io/) or [StringTemplate](http://www.stringtemplate.org/) attempt to. It is your responsibility as the programmer to keep the business logic out of your Lullaby templates or they could easily become an unmaintainable mess.
