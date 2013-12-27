@@ -190,6 +190,7 @@ describe("Lullaby", function()
       assert_url("http://www.example.com/a/b.html?t=10m&amp;x=y#x1",
         H.AbsUrl{'http', 'www.example.com', {'a','b.html'}, params={t='10m',x='y'}, hash="x1"})
     end)
+  
     it("URL escaping", function()
       assert_url("http://www.example.com/?%3C%3E=%23&amp;%3F%25=%20#%2E%2E",
         H.AbsUrl{'http', 'www.example.com', nil, params={['?%']=' ', ['<>']='#'}, hash=".."})
@@ -213,6 +214,15 @@ describe("Lullaby", function()
     it("just hash", function()
       assert_url("#Chen",
         H.RelUrl{nil, hash="Chen"})
+    end)
+  
+    it("nonstring query params", function()
+      assert_url("?n=42",
+        H.RelUrl{nil, params={n=42}})
+    end)
+    it("null query params", function()
+      assert_url("?bar&amp;foo",
+        H.RelUrl{nil, params={foo=H.Nil, bar=H.Nil}})
     end)
   
     local function url_error(err, ctor, args)
