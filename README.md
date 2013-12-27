@@ -343,21 +343,26 @@ The `AbsUrl` constructor receives a scheme, host and path as positional paramete
 
 ```lua
 -- Paths are represented as an array of path segments:
-A{"absolute link", href=AbsUrl{'http', 'www.example.com', {'posts', 'post1.html'}}
+A{"absolute link", href=AbsUrl{'http', 'www.example.com', {'posts', 'post1.html'}}}
 --   http://www.example.com/posts/post1.html
 
 -- Query parameters go on the `params`  field; The hash goes on the `hash` field
-A{"query params", href=AbsUrl{'http', 'www.example.com', params={a="b", c="d"}, hash="x2"}
+A{"query params", href=AbsUrl{'http', 'www.example.com', params={a="b", c="d"}, hash="x2"}}
 --   http://www.example.com/?a=b&c=d#x2
+
+-- Some web servers might expect a query parameter with just the key,
+-- without a value. In that case, use `lullaby.Nil` as the parameter value:
+A{"null param", href=AbsUrl{'http', 'www.example.com', params={a=Nil}}}
+--   http://www.example.com/?a
 ```
 
 All the parameters are optional:
 
 ```lua
 -- scheme relative urls:
-A{href=AbsUrl{nil, 'www.example.com', {index.html'}}
+A{href=AbsUrl{nil, 'www.example.com', {index.html'}}}
 -- absolute paths relative to the root
-A{href=AbsUrl{nil, nil, {'index.html'}}
+A{href=AbsUrl{nil, nil, {'index.html'}}}
 --   /index.html
 ```
 

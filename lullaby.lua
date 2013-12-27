@@ -98,6 +98,11 @@ local function isRawType(x) return getmetatable(x) == RawMt end
 --Datatype for URL attributes
 local UrlMt = {}
 
+-- Some web frameworks consider parameters without an equals sign
+-- to be a null value (instead of an empty string). In order to support that,
+-- we use a special Nil value, similarly to the JSON library.
+local Nil = {} 
+
 local url_schemes = U.Set{'http', 'https'}
 
 local function _Url(scheme, host, path, kw, isabsolute)
@@ -179,8 +184,10 @@ UrlMt.__tostring = function(self)
     for i, key, value in U.xpairs(self.params) do
       if i > 1 then w('&') end
       w(escape.url_param(key))
-      w('=')
-      w(escape.url_param(value))
+      if value ~= Nil then
+        w('=')
+        w(escape.url_param(value))
+      end
     end
   end
   
@@ -337,6 +344,7 @@ local H = {} --Exports
 -- Url Datatype
 H.AbsUrl = AbsUrl
 H.RelUrl = RelUrl
+H.Nil = Nil
 
 -- Unsafe string datatype
 H.Raw = Raw
