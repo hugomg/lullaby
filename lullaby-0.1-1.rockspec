@@ -1,7 +1,10 @@
 package = "lullaby"
-version = "1.0-1"
+version = "0.1-1"
 source = {
-   url = "https://github.com/hugomg/lullaby/archive/v0.1.tar.gz"
+--   url = "https://github.com/hugomg/lullaby/archive/v0.1.tar.gz",
+--   dir = "lullaby-0.1",
+   url = "git://github.com/hugomg/lullaby",
+   tag = "v0.1",
 }
 description = {
    summary = "A stream-based, Turing-complete template library for HTML.",
